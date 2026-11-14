@@ -1,8 +1,10 @@
 /**
  * Object catalog for the sample tileset: stilt houses, temple, mosque, Tadika school, Malay kampung
- * houses, Chinese-Thai shrine, market and halal stalls, kolek boats, trees, banana plants…
+ * houses, Chinese-Thai shrine, market and halal stalls, kolek boats, trees, banana plants… plus the
+ * brick-town street set (rowhouses, apartment with fire escape, garage, corner shop, street trees, poles).
  * Each object is a procedurally painted PNG (CC0) with a footprint (solid tiles) used for collision.
  */
+import { CITY_OBJECT_KINDS, CITY_PAINTERS } from "./cityObjects.js";
 import { c, noise, Pix, type Rgba, type View } from "./pixel.js";
 import type { RgbaImage } from "./raster.js";
 import { TILE_SIZE } from "./types.js";
@@ -48,6 +50,8 @@ export const OBJECT_KINDS: readonly ObjectKind[] = [
   { kind: "boat", name: "Long-tail boat", nameTh: "เรือหางยาว", category: "floor", w: 2, h: 1, solid: null, floor: true },
   { kind: "bridge_h", name: "Plank bridge (east–west)", nameTh: "สะพานไม้ (แนวนอน)", category: "floor", w: 3, h: 1, solid: null, floor: true },
   { kind: "bridge_v", name: "Plank bridge (north–south)", nameTh: "สะพานไม้ (แนวตั้ง)", category: "floor", w: 1, h: 3, solid: null, floor: true },
+  // brick town (city street set, see cityObjects.ts)
+  ...CITY_OBJECT_KINDS,
 ];
 
 export const OBJECT_BY_KIND = new Map(OBJECT_KINDS.map((o) => [o.kind, o]));
@@ -513,6 +517,7 @@ const PAINTERS: Record<string, (v: View) => void> = {
   boat: drawBoat,
   bridge_h: (v) => drawBridge(v, true),
   bridge_v: (v) => drawBridge(v, false),
+  ...CITY_PAINTERS,
 };
 
 const imageCache = new Map<string, RgbaImage>();

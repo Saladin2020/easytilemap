@@ -9,7 +9,6 @@ import {
   ATLAS_COLUMNS,
   ATLAS_ROWS,
   BLOB_MASKS,
-  DECOR_ROW,
   GRASS_VARIANTS,
   OVERLAY_TERRAINS,
   PEERING_BITS,
@@ -17,6 +16,7 @@ import {
   decorCoord,
   resolveGround,
   shoreCoord,
+  curbCoord,
 } from "../shared/autotile.js";
 import { characterLabel, DEFAULT_GROUND_ROW, facingRow, feetPx, frameColumn, walkColumns } from "../shared/characters.js";
 import { collisionGrid, collisionRects } from "../shared/map.js";
@@ -58,6 +58,8 @@ const TERRAIN_COLORS: Record<string, string> = {
   water: "Color(0.23, 0.53, 0.66, 1)",
   stone: "Color(0.76, 0.73, 0.66, 1)",
   sand: "Color(0.91, 0.83, 0.63, 1)",
+  sidewalk: "Color(0.79, 0.77, 0.72, 1)",
+  road: "Color(0.24, 0.25, 0.27, 1)",
 };
 
 class Writer {
@@ -131,7 +133,7 @@ export function decorCells(doc: MapDoc): GodotCell[] {
   return out;
 }
 
-/** TileSet with one terrain set (match corners and sides): grass = 0, dirt/paddy/water/stone/sand = 1..5. */
+/** TileSet with one terrain set (match corners and sides): grass = 0, dirt/paddy/water/stone/sand = 1..5, sidewalk = 6, road = 7. */
 export function buildTileSetTres(texturePath: string, tileSize = 16): string {
   const lines: string[] = [];
   const terrainId = (t: string) => (TERRAINS as readonly string[]).indexOf(t);
@@ -151,7 +153,7 @@ export function buildTileSetTres(texturePath: string, tileSize = 16): string {
       tile(at.col, at.row, id, (bit) => (mask & bit ? id : 0));
     });
     const spare = blobCoord(t, 47);
-    tile(spare.col, spare.row, id, () => id, 0.5);
+    tile(spare.col, spare.row, id, () => id, t === "road" || t === "sidewalk" ? 0.1 : 0.5);
   }
   // shore: water tiles whose open sides are beach sand
   const water = terrainId("water");
@@ -162,7 +164,19 @@ export function buildTileSetTres(texturePath: string, tileSize = 16): string {
   });
   const shoreSpare = shoreCoord(47);
   tile(shoreSpare.col, shoreSpare.row, water, () => water, 0.01);
-  DECOR_CODES.forEach((_, i) => tile(i, DECOR_ROW, null));
+  // curb: road tiles whose open sides are sidewalk (curb + paving)
+  const road = terrainId("road");
+  const sidewalk = terrainId("sidewalk");
+  BLOB_MASKS.forEach((mask, i) => {
+    const at = curbCoord(i);
+    tile(at.col, at.row, road, (bit) => (mask & bit ? road : sidewalk));
+  });
+  const curbSpare = curbCoord(47);
+  tile(curbSpare.col, curbSpare.row, road, () => road, 0.01);
+  DECOR_CODES.forEach((code) => {
+    const at = decorCoord(code)!;
+    tile(at.col, at.row, null);
+  });
   const terrains = TERRAINS.map((t, i) => `terrain_set_0/terrain_${i}/name = "${t}"\nterrain_set_0/terrain_${i}/color = ${TERRAIN_COLORS[t]}`).join("\n");
   return `[gd_resource type="TileSet" load_steps=3 format=3]
 
@@ -520,8 +534,9 @@ Open this folder as a Godot project and press F5 (arrow keys pan the preview cam
 
 ${base}.tscn
   Ground   TileMapLayer — ${base}_tileset.tres, terrain set 0 "match corners and sides":
-           grass(0) dirt(1) paddy(2) water(3) stone(4) sand(5). Paint more with the Terrains tab.
-  Decor    TileMapLayer (flowers, rocks, lotus, reeds, fence…)
+           grass(0) dirt(1) paddy(2) water(3) stone(4) sand(5) sidewalk(6) road(7).
+           Paint more with the Terrains tab.
+  Decor    TileMapLayer (flowers, rocks, lotus, reeds, fence, lane lines, crosswalks, manholes…)
   Floor    bridges / boats (Sprite2D, under characters)
   World    y_sort_enabled: objects (Sprite2D, origin at their base) + characters
            (AnimatedSprite2D idle_<dir> / walk_<dir>; character_patrol.gd walks waypoints)

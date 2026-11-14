@@ -7,6 +7,7 @@ import {
   CHARACTER_ANIMS,
   CODE_TERRAIN,
   DECOR_CODES,
+  DECOR_NAMES,
   DEFAULT_VIEWPORT,
   FACINGS,
   FORMAT,
@@ -344,8 +345,7 @@ export function layerCode(layer: LayerName, code: string): string {
   if (layer === "collision" && (code === "block" || code === "solid")) return "#";
   if (layer === "collision" && code === "open") return "o";
   if (layer === "decor") {
-    const byName: Record<string, string> = { flowers: "f", tuft: "t", rocks: "r", lotus: "l", pebbles: "e", stump: "u", reeds: "n", fence: "k" };
-    return byName[code] ?? code;
+    return (DECOR_NAMES as Record<string, string>)[code] ?? code;
   }
   return code;
 }

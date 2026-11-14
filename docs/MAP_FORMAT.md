@@ -41,6 +41,8 @@ Each layer is `height` strings of `width` characters. Missing `decor` / `collisi
 | `w` | canal water | น้ำ / คลอง | **no** |
 | `s` | temple stone | ลานหิน | yes |
 | `b` | beach sand | หาดทราย | yes |
+| `v` | sidewalk | ทางเท้า | yes |
+| `a` | asphalt road | ถนนลาดยาง | yes |
 
 Grass is the base: every other terrain is a **blob-47** overlay on grass. Each cell looks at its 8
 neighbours (`N=1 NE=2 E=4 SE=8 S=16 SW=32 W=64 NW=128`, a diagonal only counts when both adjacent sides
@@ -50,8 +52,19 @@ variants per cell. Two different non-grass terrains side by side get a thin gras
 water: sand treats water as its own kind, and water cells touching sand use a separate **shore** blob block
 (wet sand rim instead of grass), so a beach runs straight into the sea.
 
+The city pair works the same way: a **sidewalk** treats road as its own kind (the paving runs up to the curb),
+and a **road** cell touching sidewalk (including diagonally) uses the separate **curb** blob block: open edges show
+a lit curb stone, its shadow and a gutter, and the curb turns with a rounded corner where the sidewalk turns. A
+road next to grass keeps the plain set (worn asphalt edge). Paint a 4-way crossing as two road strips over a
+sidewalk fill; the intersection cells pick the inner rounded curb corners automatically.
+
 **decor** — `.` or: `f` flowers · `t` grass tuft · `r` rocks · `l` lotus (on water) · `e` pebbles ·
-`u` stump · `n` reeds · `k` fence. Decor is drawn on its own TileMapLayer and never blocks.
+`u` stump · `n` reeds · `k` fence · street: `h` lane dashes (east–west) · `j` lane dashes (north–south) ·
+`z` zebra crossing on an east–west road (stripes run with the traffic) · `x` zebra crossing on a north–south
+road · `m` manhole · `q` drain grate (sits on the tile's north edge, put it on the road's north gutter row) ·
+`c` puddle · `y` fallen leaves. Names work in ops too (`lane_ew`, `lane_ns`, `crosswalk_ew`, `crosswalk_ns`,
+`manhole`, `grate`, `puddle`, `leaves`). Lane dashes and zebra stripes repeat with a period that divides 16, so
+runs of them join across tiles. Decor is drawn on its own TileMapLayer and never blocks.
 
 **collision** — `.` automatic · `#` force blocked · `o` force open.
 

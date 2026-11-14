@@ -4,10 +4,10 @@ export const FORMAT = "easytilemap/1" as const;
 export const TILE_SIZE = 16;
 
 /** Ground terrains. `grass` is the base; the others autotile (blob-47) over it. */
-export const TERRAINS = ["grass", "dirt", "paddy", "water", "stone", "sand"] as const;
+export const TERRAINS = ["grass", "dirt", "paddy", "water", "stone", "sand", "sidewalk", "road"] as const;
 export type Terrain = (typeof TERRAINS)[number];
-export const TERRAIN_CODE: Record<Terrain, string> = { grass: "g", dirt: "d", paddy: "p", water: "w", stone: "s", sand: "b" };
-export const CODE_TERRAIN: Record<string, Terrain> = { g: "grass", d: "dirt", p: "paddy", w: "water", s: "stone", b: "sand" };
+export const TERRAIN_CODE: Record<Terrain, string> = { grass: "g", dirt: "d", paddy: "p", water: "w", stone: "s", sand: "b", sidewalk: "v", road: "a" };
+export const CODE_TERRAIN: Record<string, Terrain> = { g: "grass", d: "dirt", p: "paddy", w: "water", s: "stone", b: "sand", v: "sidewalk", a: "road" };
 export const TERRAIN_LABELS: Record<Terrain, { en: string; th: string }> = {
   grass: { en: "Grass", th: "หญ้า" },
   dirt: { en: "Dirt path", th: "ทางดิน" },
@@ -15,10 +15,12 @@ export const TERRAIN_LABELS: Record<Terrain, { en: string; th: string }> = {
   water: { en: "Canal water", th: "คลอง" },
   stone: { en: "Temple stone", th: "ลานหิน" },
   sand: { en: "Beach sand", th: "หาดทราย" },
+  sidewalk: { en: "Sidewalk paving", th: "ทางเท้า" },
+  road: { en: "Asphalt road", th: "ถนนลาดยาง" },
 };
 
 /** Decor tiles (one 16px tile each, drawn over the ground). `.` = empty. */
-export const DECOR_CODES = ["f", "t", "r", "l", "e", "u", "n", "k"] as const;
+export const DECOR_CODES = ["f", "t", "r", "l", "e", "u", "n", "k", "h", "j", "z", "x", "m", "q", "c", "y"] as const;
 export type DecorCode = (typeof DECOR_CODES)[number];
 export const DECOR_LABELS: Record<DecorCode, { en: string; th: string }> = {
   f: { en: "Flowers", th: "ดอกไม้" },
@@ -29,6 +31,21 @@ export const DECOR_LABELS: Record<DecorCode, { en: string; th: string }> = {
   u: { en: "Stump", th: "ตอไม้" },
   n: { en: "Reeds", th: "ต้นกก" },
   k: { en: "Fence", th: "รั้วไม้" },
+  // city street (draw over road / sidewalk)
+  h: { en: "Lane dashes E–W", th: "เส้นแบ่งช่องทาง (แนวนอน)" },
+  j: { en: "Lane dashes N–S", th: "เส้นแบ่งช่องทาง (แนวตั้ง)" },
+  z: { en: "Crosswalk (E–W road)", th: "ทางม้าลาย (ถนนแนวนอน)" },
+  x: { en: "Crosswalk (N–S road)", th: "ทางม้าลาย (ถนนแนวตั้ง)" },
+  m: { en: "Manhole", th: "ฝาท่อ" },
+  q: { en: "Storm drain grate", th: "ตะแกรงระบายน้ำ" },
+  c: { en: "Puddle", th: "แอ่งน้ำ" },
+  y: { en: "Fallen leaves", th: "ใบไม้ร่วง" },
+};
+
+/** Decor names accepted by edit ops (`code: "crosswalk_ew"` = `z`). */
+export const DECOR_NAMES: Record<string, DecorCode> = {
+  flowers: "f", tuft: "t", rocks: "r", lotus: "l", pebbles: "e", stump: "u", reeds: "n", fence: "k",
+  lane_ew: "h", lane_ns: "j", crosswalk_ew: "z", crosswalk_ns: "x", manhole: "m", grate: "q", puddle: "c", leaves: "y",
 };
 
 /** Collision layer: `#` blocked, `o` forced open (overrides water / objects), `.` automatic. */

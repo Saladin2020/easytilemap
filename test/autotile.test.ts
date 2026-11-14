@@ -41,7 +41,7 @@ describe("blob-47 autotile", () => {
     expect(resolveGround(doc)).toHaveLength(4);
   });
 
-  it("generates a deterministic 128×624 atlas", () => {
+  it("generates a deterministic 128×928 atlas", () => {
     const a = generateAtlas();
     expect(a.width).toBe(ATLAS_COLUMNS * 16);
     expect(a.height).toBe(ATLAS_ROWS * 16);

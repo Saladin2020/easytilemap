@@ -45,6 +45,20 @@ for (const f of ["exports/thai_village_topdown-png/thai_village_topdown.png", "e
   ok(existsSync(path.join(ws, f)), `export → ${f}`);
 }
 
+// brick town: the city sample is clean; a fresh street crossing paints with codes and names and exports
+const city = JSON.parse(cli("check", "city_crossing", "--json"));
+ok(city.errors.length === 0 && city.warnings.length === 0, "check: city_crossing is clean");
+cli("new", "street", "--width", "12", "--height", "10");
+cli("paint", "street", "--layer", "ground", "--code", "sidewalk", "--rect", "0,0,12,10");
+cli("paint", "street", "--layer", "ground", "--code", "a", "--rect", "0,4,12,3");
+cli("paint", "street", "--layer", "decor", "--code", "lane_ew", "--line", "0,5,11,5");
+cli("place", "street", "--object", "brick_rowhouse", "--at", "1,0");
+cli("place", "street", "--object", "street_tree_large", "--at", "7,4");
+const st = JSON.parse(cli("check", "street", "--json"));
+ok(st.errors.length === 0, "paint sidewalk/road + lane + brick objects → valid");
+cli("export", "street", "--preset", "godot");
+ok(existsSync(path.join(ws, "exports/street-godot/street_tileset.tres")), "export → exports/street-godot/street_tileset.tres");
+
 rmSync(ws, { recursive: true, force: true });
 console.log(failed ? "CLI smoke FAILED" : "CLI smoke OK");
 process.exit(failed ? 1 : 0);
