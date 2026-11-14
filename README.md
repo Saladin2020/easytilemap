@@ -27,7 +27,8 @@
 
 **แผนที่มุมบน · ออโต้ไทล์ · หมู่บ้านไทย · ตัวละคร Easy Sprite**  
 Paint top-down 16px pixel-art maps with blob-47 autotile terrain (grass, dirt road, rice paddy, canal, temple
-stone, beach sand), a procedural Thai village tileset and object set, collision, spawn points and walking
+stone, beach sand, city sidewalk and asphalt road with curbs), a procedural Thai village + brick-town tileset and
+object set, collision, spawn points and walking
 [Easy Sprite](https://github.com/Saladin2020/easysprite) top-down characters — then export to **Godot 4.3+**
 (TileMapLayer + terrain TileSet) or **PixiJS v8**. The fourth sibling of Easy Sprite (characters),
 [Easy Scene](https://github.com/Saladin2020/easyscene) (side-view levels) and
@@ -58,13 +59,31 @@ where kolek boats (เรือกอและ) rest beside fish-drying racks. T
 neighbours from Easy Sprite (hijab teacher, kopiah boy, Pak Cik in jubah, Tadika girl, roti seller, fisherman in
 kain pelekat). Spawns: `temple`, `shrine`, `mosque`, `tadika`, `market`, `beach`.
 
+<p align="center">
+  <img src="docs/assets/map-city-crossing.png" width="900" alt="The city_crossing demo: a brick-town 4-way intersection with asphalt roads, lane dashes, zebra crossings, curbed sidewalks, brick rowhouses, an apartment with a fire escape, a corner shop with a teal awning and big street trees overhanging the road" />
+</p>
+
+**Brick town · สี่แยกเมืองอิฐ** — `city_crossing` is a 4-way intersection in a brick neighbourhood. Two new
+blob-47 terrains, `v` **sidewalk** (concrete slabs) and `a` **road** (asphalt), autotile like the rest; where road
+meets sidewalk the road switches to a dedicated **curb** block (lit curb stone, shadow and gutter, rounded corners
+where the sidewalk turns), and sidewalks treat road as their own kind so paving runs right up to the curb. Street
+decor: lane dashes `h` / `j`, zebra crossings `z` (on an east–west road) / `x` (on a north–south road), manhole `m`,
+drain grate `q`, puddle `c`, fallen leaves `y`. Objects: brick rowhouses (red, brown), an apartment with a fire
+escape and water tank, a garage, a corner shop with a striped teal awning, a flat-roof block filler, large street
+trees whose canopy overhangs the road (only the trunk blocks), shrubs, street lamps, utility poles and a red
+postbox. Spawns: `player`, `shop`, `apartment`, `park`, `south_street`.
+
+<p align="center">
+  <img src="docs/assets/objects-city.png" width="900" alt="Brick-town objects: rowhouses, apartment with fire escape, garage, corner shop, flat roof, street tree, shrub, lamp, utility pole, postbox" />
+</p>
+
 ---
 
 ## What you get
 
 | Terrain | Objects | Characters | Export |
 | --- | --- | --- | --- |
-| 6 terrains on a character grid, **blob-47** autotile transitions (47 tiles per terrain, corner-aware), beach sand with dedicated shore-water tiles, 8 grass variants + random terrain centres, 8 decor codes (flowers, lotus, reeds, fence…), collision layer (`#` block / `o` open) | 23 village kinds: stilt houses, temple (ubosot), sala, market stall, spirit house, wooden mosque, Tadika school, Malay kampung house, halal stall, Chinese-Thai shrine, fish rack, kolek, mango tree, palm, banana, bamboo, haystack, water jar, lantern post, long-tail boat, bridges — each with a solid footprint, y-sorted by base line | Easy Sprite **native top-down** sheets (front/right/back/left rows, idle + walk), placed by feet tile, facing + optional patrol path | Godot 4.3+ project (TileMapLayer ground + decor, `TileSet .tres` with terrain set + peering bits, AnimatedSprite2D characters with patrol, StaticBody2D collision, Marker2D spawns, Camera2D), PixiJS v8 loader + playable demo, PNG |
+| 8 terrains on a character grid, **blob-47** autotile transitions (47 tiles per terrain, corner-aware), beach sand with dedicated shore-water tiles, sidewalk + asphalt road with a dedicated curb block, 8 grass variants + random terrain centres, 16 decor codes (flowers, lotus, reeds, fence, lane dashes, zebra crossings, manhole, grate, puddle, leaves…), collision layer (`#` block / `o` open) | 34 kinds: stilt houses, temple (ubosot), sala, market stall, spirit house, wooden mosque, Tadika school, Malay kampung house, halal stall, Chinese-Thai shrine, fish rack, kolek, mango tree, palm, banana, bamboo, haystack, water jar, lantern post, long-tail boat, bridges, plus brick town: rowhouses, apartment with fire escape, garage, corner shop, flat roof, large street tree, shrub, street lamp, utility pole, red postbox — each with a solid footprint, y-sorted by base line | Easy Sprite **native top-down** sheets (front/right/back/left rows, idle + walk), placed by feet tile, facing + optional patrol path | Godot 4.3+ project (TileMapLayer ground + decor, `TileSet .tres` with terrain set + peering bits, AnimatedSprite2D characters with patrol, StaticBody2D collision, Marker2D spawns, Camera2D), PixiJS v8 loader + playable demo, PNG |
 
 * **Collision you don't have to paint.** Water, object footprints and floor objects (bridges open the canal)
   are derived; the collision layer only overrides.
@@ -117,7 +136,8 @@ and character palettes, inspector (name, facing, animation, flip, patrol), grid 
 }
 ```
 
-Ground codes `g` grass · `d` dirt · `p` paddy · `w` water · `s` stone · `b` beach sand. Decor `f t r l e u n k`, `.` empty.
+Ground codes `g` grass · `d` dirt · `p` paddy · `w` water · `s` stone · `b` beach sand · `v` sidewalk · `a` road.
+Decor `f t r l e u n k` (village) and `h j z x m q c y` (street), `.` empty.
 Full reference: **[docs/MAP_FORMAT.md](docs/MAP_FORMAT.md)**.
 
 ## CLI
@@ -143,7 +163,7 @@ easytilemap catalog · list · info · tileset · serve [--port 8808]
 | Preset | Output (`exports/<id>-<preset>/`) |
 | --- | --- |
 | `png` | `<id>.png` at `--scale` (default 2) |
-| `godot` | Godot 4.3+ project: `<id>.tscn` (Ground + Decor `TileMapLayer`, floor sprites, y-sorted `World` with object `Sprite2D`s and character `AnimatedSprite2D`s, `Collision` StaticBody2D with merged rectangles, `Spawns` Marker2Ds, Camera2D), `<id>_tileset.tres` (terrain set "match corners and sides" with 6 terrains + peering bits for every blob tile, so Godot's terrain painter keeps working), `character_patrol.gd`, `camera_pan.gd`, `test_map.gd`, `screenshot.gd`, 480×270 viewport, nearest filter |
+| `godot` | Godot 4.3+ project: `<id>.tscn` (Ground + Decor `TileMapLayer`, floor sprites, y-sorted `World` with object `Sprite2D`s and character `AnimatedSprite2D`s, `Collision` StaticBody2D with merged rectangles, `Spawns` Marker2Ds, Camera2D), `<id>_tileset.tres` (terrain set "match corners and sides" with 8 terrains + peering bits for every blob, shore and curb tile, so Godot's terrain painter keeps working), `character_patrol.gd`, `camera_pan.gd`, `test_map.gd`, `screenshot.gd`, 480×270 viewport, nearest filter |
 | `pixi` | `<id>.tilemap.json` (resolved atlas indices, objects, characters, collision, spawns), atlas + object + sheet PNGs, `easytilemap-pixi.js`, playable `index.html` (arrow keys / WASD walk "ton" around with collision) |
 
 **PixiJS v8**

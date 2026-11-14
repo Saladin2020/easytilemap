@@ -1,6 +1,7 @@
 /**
  * Procedural "Thai village" sample tileset (CC0): grass, dirt path, rice paddy, canal water and temple
- * stone with blob-47 transitions over grass, decor tiles and editor markers. Deterministic and pure, so
+ * stone with blob-47 transitions over grass, decor tiles and editor markers, plus the city street set
+ * (sidewalk, asphalt road, curb tiles and street decor, see cityTiles.ts). Deterministic and pure, so
  * the CLI, tests and the browser all produce the identical atlas.
  */
 import {
@@ -20,9 +21,14 @@ import {
   SW,
   W,
   blobCoord,
+  curbCoord,
+  decorCoord,
+  CURB_ROW,
+  CITY_DECOR_ROW,
   shoreCoord,
   SHORE_ROW,
 } from "./autotile.js";
+import { paintCityDecor, paintRoadTile, paintSidewalkTile } from "./cityTiles.js";
 import { c, noise, Pix, shade, type Rgba, type View } from "./pixel.js";
 import type { RgbaImage } from "./raster.js";
 import { DECOR_CODES, TILE_SIZE, type Terrain } from "./types.js";
@@ -69,7 +75,10 @@ export function grassPx(x: number, y: number, variant = 0): Rgba {
   return col;
 }
 
-function terrainPx(t: Exclude<Terrain, "grass">, x: number, y: number, alt: boolean): Rgba {
+type VillageTerrain = Exclude<Terrain, "grass" | "sidewalk" | "road">;
+const CITY_TERRAINS = new Set<Terrain>(["sidewalk", "road"]);
+
+function terrainPx(t: VillageTerrain, x: number, y: number, alt: boolean): Rgba {
   const s = alt ? 50 : 0;
   switch (t) {
     case "dirt": {
@@ -108,14 +117,14 @@ function terrainPx(t: Exclude<Terrain, "grass">, x: number, y: number, alt: bool
 }
 
 /** Grass shows this many px inside the tile on an open side. */
-const EDGE: Record<Exclude<Terrain, "grass">, number> = { dirt: 2, paddy: 1, water: 2, stone: 1, sand: 2 };
+const EDGE: Record<VillageTerrain, number> = { dirt: 2, paddy: 1, water: 2, stone: 1, sand: 2 };
 
 function jit(along: number, side: number, t: string): number {
   return noise(along, side, t.length * 17) < 0.45 ? 1 : 0;
 }
 
 /** True when local pixel (px, py) belongs to the terrain (else grass shows). Handles 1px outside the tile. */
-function insideTerrain(t: Exclude<Terrain, "grass">, mask: number, px: number, py: number): boolean {
+function insideTerrain(t: VillageTerrain, mask: number, px: number, py: number): boolean {
   if (px < 0) return Boolean(mask & W) && insideTerrain(t, mask, 0, py);
   if (px > T - 1) return Boolean(mask & E) && insideTerrain(t, mask, T - 1, py);
   if (py < 0) return Boolean(mask & N) && insideTerrain(t, mask, px, 0);
@@ -148,7 +157,7 @@ function insideTerrain(t: Exclude<Terrain, "grass">, mask: number, px: number, p
   return true;
 }
 
-function paintBlobTile(v: View, t: Exclude<Terrain, "grass">, mask: number, alt: boolean, shore = false): void {
+function paintBlobTile(v: View, t: VillageTerrain, mask: number, alt: boolean, shore = false): void {
   const ins = (x: number, y: number) => insideTerrain(t, mask, x, y);
   for (let y = 0; y < T; y++) {
     for (let x = 0; x < T; x++) {
@@ -298,19 +307,32 @@ function paintMarkers(collision: View, spawn: View): void {
 
 let atlasCache: RgbaImage | null = null;
 
-/** The 128×624 sample atlas (cached). */
+/** The 128×928 sample atlas (cached). */
 export function generateAtlas(): RgbaImage {
   if (atlasCache) return atlasCache;
   const p = new Pix(ATLAS_COLUMNS * T, ATLAS_ROWS * T);
   const tile = (col: number, row: number) => p.view(col * T, row * T, T, T);
   for (let v = 0; v < GRASS_VARIANTS; v++) paintGrass(tile(v, 0), v);
   for (const t of OVERLAY_TERRAINS) {
+    if (CITY_TERRAINS.has(t)) continue;
+    const vt = t as VillageTerrain;
     BLOB_MASKS.forEach((mask, i) => {
-      const at = blobCoord(t, i);
-      paintBlobTile(tile(at.col, at.row), t, mask, false);
+      const at = blobCoord(vt, i);
+      paintBlobTile(tile(at.col, at.row), vt, mask, false);
     });
-    const spare = blobCoord(t, 47);
-    paintBlobTile(tile(spare.col, spare.row), t, 255, true);
+    const spare = blobCoord(vt, 47);
+    paintBlobTile(tile(spare.col, spare.row), vt, 255, true);
+  }
+  // city: sidewalk + road over grass, then the curb set (road next to sidewalk); slot 47 = cracked slab / wet asphalt
+  const g0 = (x: number, y: number) => grassPx(x, y, 0);
+  for (let i = 0; i < 48; i++) {
+    const mask = i < 47 ? BLOB_MASKS[i]! : 255;
+    const sw = blobCoord("sidewalk", i);
+    paintSidewalkTile(tile(sw.col, sw.row), mask, i === 47, g0, PALETTE.grassDark);
+    const rd = blobCoord("road", i);
+    paintRoadTile(tile(rd.col, rd.row), mask, i === 47, false, g0, PALETTE.grassDark);
+    const cb = curbCoord(i);
+    paintRoadTile(tile(cb.col, cb.row), mask, i === 47, true, g0, PALETTE.grassDark);
   }
   BLOB_MASKS.forEach((mask, i) => {
     const at = shoreCoord(i);
@@ -318,7 +340,11 @@ export function generateAtlas(): RgbaImage {
   });
   const shoreSpare = shoreCoord(47);
   paintBlobTile(tile(shoreSpare.col, shoreSpare.row), "water", 255, true, true);
-  DECOR_CODES.forEach((code, i) => paintDecor(tile(i, DECOR_ROW), code));
+  DECOR_CODES.forEach((code, i) => {
+    const at = decorCoord(code)!;
+    if (i < ATLAS_COLUMNS) paintDecor(tile(at.col, at.row), code);
+    else paintCityDecor(tile(at.col, at.row), code);
+  });
   paintMarkers(tile(0, MARKER_ROW), tile(1, MARKER_ROW));
   atlasCache = p.img;
   return p.img;
@@ -331,7 +357,7 @@ export function tilesetMeta() {
   return {
     format: "easytilemap.tileset/1",
     id: SAMPLE_TILESET_ID,
-    name: "Thai village (sample, CC0)",
+    name: "Thai village + city street (sample, CC0)",
     image: `${SAMPLE_TILESET_ID}.png`,
     tileSize: T,
     columns: ATLAS_COLUMNS,
@@ -341,7 +367,9 @@ export function tilesetMeta() {
       grass: { row: 0, variants: GRASS_VARIANTS },
       terrains: Object.fromEntries(OVERLAY_TERRAINS.map((t) => [t, { firstRow: blobCoord(t, 0).row, tiles: 48 }])),
       shore: { firstRow: SHORE_ROW, tiles: 48, note: "water next to sand: open edges show sand" },
-      decor: { row: DECOR_ROW, codes: [...DECOR_CODES] },
+      curb: { firstRow: CURB_ROW, tiles: 48, note: "road next to sidewalk: open edges show a curb and paving" },
+      decor: { row: DECOR_ROW, codes: [...DECOR_CODES.slice(0, ATLAS_COLUMNS)] },
+      cityDecor: { row: CITY_DECOR_ROW, codes: [...DECOR_CODES.slice(ATLAS_COLUMNS)] },
       markers: { row: MARKER_ROW, collision: 0, spawn: 1 },
     },
     license: "CC0-1.0",

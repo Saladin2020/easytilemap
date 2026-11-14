@@ -1,0 +1,433 @@
+{
+  "format": "easytilemap/1",
+  "id": "city_crossing",
+  "name": "สี่แยกเมืองอิฐ · Brick-town crossing (top-down)",
+  "tileSize": 16,
+  "width": 40,
+  "height": 30,
+  "tileset": "thai_village",
+  "viewport": {
+    "width": 480,
+    "height": 270
+  },
+  "layers": {
+    "ground": [
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "vvvvvvvvvvvvvvvvvvaaavvvvvvvvvvvvvvvvvvv",
+      "ggggggggggggggggvvaaavvvvvvvvvvvvvvvvvvv",
+      "ggggggggggggggggvvaaavvvvvvvvvvvvvvvvvvv",
+      "ggggggggggggggggvvaaavvvvvvvvvvvvvvvvvvv",
+      "ggggggggggggggggvvaaavvvvvvvvvvvvvvvvvvv",
+      "ggggggggggggggggvvaaavvvvvvvvvvvvvvvvvvv",
+      "ggggggggggggggggvvaaavvvvvvvvvvvvvvvvvvv",
+      "ggggggggggggggggvvaaavvvvvvvvvvvvvvvvvvv",
+      "ggggggggggggggggvvaaavvvvvvvvvvvvvvvvvvv",
+      "ggggggggggggggggvvaaavvvvvvvvvvvvvvvvvvv",
+      "ggggggggggggggggvvaaavvvvvvvvvvvvvvvvvvv",
+      "ggggggggggggggggvvaaavvvvvvvvvvvvvvvvvvv"
+    ],
+    "decor": [
+      "...................j....................",
+      "...................j....................",
+      "...................j....................",
+      "...................j....................",
+      "...................j....................",
+      "...................j....................",
+      "..................qj....................",
+      "...................j....................",
+      "...................j....................",
+      "...................j....................",
+      "........................................",
+      "..................xxx...................",
+      "..................xxx...................",
+      "....q...m.......zz...zz...cq............",
+      "hhhhhhhhhhhhhhh.zz...zz.hhhhhhhhhhhhhhhh",
+      "...y........c...zz...zz...y....m....c...",
+      "..y......y........xxx....y........y.....",
+      ".....y.....y......xxx.......y........y..",
+      "........................................",
+      ".....t.t.ff........j....................",
+      ".......f..t........j....................",
+      "........f.........cj....................",
+      "...f....ff.f.......jm...................",
+      "...................j....................",
+      "...............r...j....................",
+      "...................jq...................",
+      "..........f........j....................",
+      "....r.f............j....................",
+      "...................j.y..................",
+      "f......t.....f.....j...................."
+    ],
+    "collision": [
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................"
+    ]
+  },
+  "objects": [
+    {
+      "kind": "brick_roof",
+      "x": 0,
+      "y": 2
+    },
+    {
+      "kind": "brick_roof",
+      "x": 4,
+      "y": 2
+    },
+    {
+      "kind": "brick_roof",
+      "x": 8,
+      "y": 0
+    },
+    {
+      "kind": "brick_rowhouse",
+      "x": 0,
+      "y": 6,
+      "name": "Rowhouse1"
+    },
+    {
+      "kind": "brick_rowhouse_brown",
+      "x": 4,
+      "y": 6,
+      "name": "Rowhouse2"
+    },
+    {
+      "kind": "brick_apartment",
+      "x": 8,
+      "y": 4,
+      "name": "Apartment"
+    },
+    {
+      "kind": "brick_roof",
+      "x": 23,
+      "y": 2
+    },
+    {
+      "kind": "brick_roof",
+      "x": 28,
+      "y": 2
+    },
+    {
+      "kind": "brick_roof",
+      "x": 35,
+      "y": 2
+    },
+    {
+      "kind": "brick_shop_corner",
+      "x": 23,
+      "y": 6,
+      "name": "CornerShop"
+    },
+    {
+      "kind": "brick_rowhouse",
+      "x": 28,
+      "y": 6,
+      "name": "Rowhouse3"
+    },
+    {
+      "kind": "brick_garage",
+      "x": 32,
+      "y": 7,
+      "name": "Garage"
+    },
+    {
+      "kind": "brick_rowhouse_brown",
+      "x": 35,
+      "y": 6,
+      "name": "Rowhouse4"
+    },
+    {
+      "kind": "brick_roof",
+      "x": 23,
+      "y": 19
+    },
+    {
+      "kind": "brick_roof",
+      "x": 31,
+      "y": 19
+    },
+    {
+      "kind": "brick_rowhouse_brown",
+      "x": 23,
+      "y": 23,
+      "name": "Rowhouse5"
+    },
+    {
+      "kind": "brick_rowhouse",
+      "x": 27,
+      "y": 23,
+      "name": "Rowhouse6"
+    },
+    {
+      "kind": "brick_apartment",
+      "x": 31,
+      "y": 21,
+      "name": "Apartment2"
+    },
+    {
+      "kind": "brick_garage",
+      "x": 37,
+      "y": 24
+    },
+    {
+      "kind": "street_tree_large",
+      "x": 1,
+      "y": 14
+    },
+    {
+      "kind": "street_tree_large",
+      "x": 8,
+      "y": 14
+    },
+    {
+      "kind": "street_tree_large",
+      "x": 24,
+      "y": 14
+    },
+    {
+      "kind": "street_tree_large",
+      "x": 33,
+      "y": 14
+    },
+    {
+      "kind": "street_tree_large",
+      "x": 21,
+      "y": 26
+    },
+    {
+      "kind": "street_tree_large",
+      "x": 6,
+      "y": 22
+    },
+    {
+      "kind": "street_tree_large",
+      "x": 11,
+      "y": 25
+    },
+    {
+      "kind": "lamp_pole",
+      "x": 14,
+      "y": 10
+    },
+    {
+      "kind": "lamp_pole",
+      "x": 22,
+      "y": 10
+    },
+    {
+      "kind": "lamp_pole",
+      "x": 14,
+      "y": 14
+    },
+    {
+      "kind": "lamp_pole",
+      "x": 26,
+      "y": 26
+    },
+    {
+      "kind": "utility_pole",
+      "x": 6,
+      "y": 9
+    },
+    {
+      "kind": "utility_pole",
+      "x": 30,
+      "y": 13
+    },
+    {
+      "kind": "postbox_red",
+      "x": 21,
+      "y": 11
+    },
+    {
+      "kind": "shrub",
+      "x": 0,
+      "y": 19
+    },
+    {
+      "kind": "shrub",
+      "x": 2,
+      "y": 19
+    },
+    {
+      "kind": "shrub",
+      "x": 13,
+      "y": 19
+    },
+    {
+      "kind": "shrub",
+      "x": 15,
+      "y": 19
+    },
+    {
+      "kind": "shrub",
+      "x": 0,
+      "y": 27
+    },
+    {
+      "kind": "shrub",
+      "x": 15,
+      "y": 27
+    },
+    {
+      "kind": "shrub",
+      "x": 23,
+      "y": 18
+    },
+    {
+      "kind": "shrub",
+      "x": 25,
+      "y": 18
+    },
+    {
+      "kind": "shrub",
+      "x": 37,
+      "y": 18
+    },
+    {
+      "kind": "shrub",
+      "x": 39,
+      "y": 18
+    },
+    {
+      "kind": "shrub",
+      "x": 14,
+      "y": 4
+    },
+    {
+      "kind": "shrub",
+      "x": 15,
+      "y": 4
+    }
+  ],
+  "spawns": [
+    {
+      "name": "player",
+      "x": 17,
+      "y": 12,
+      "facing": "front"
+    },
+    {
+      "name": "shop",
+      "x": 25,
+      "y": 11,
+      "facing": "back"
+    },
+    {
+      "name": "apartment",
+      "x": 10,
+      "y": 11,
+      "facing": "back"
+    },
+    {
+      "name": "park",
+      "x": 8,
+      "y": 23,
+      "facing": "front"
+    },
+    {
+      "name": "south_street",
+      "x": 27,
+      "y": 28,
+      "facing": "back"
+    }
+  ],
+  "characters": [
+    {
+      "sheet": "characters/town_student.png",
+      "x": 17,
+      "y": 12,
+      "name": "phi_fon",
+      "facing": "front"
+    },
+    {
+      "sheet": "characters/town_vendor.png",
+      "x": 25,
+      "y": 11,
+      "name": "pa_daeng",
+      "facing": "front"
+    },
+    {
+      "sheet": "characters/town_kid.png",
+      "x": 3,
+      "y": 11,
+      "name": "ton",
+      "facing": "right",
+      "anim": "walk",
+      "patrol": {
+        "path": [
+          [1, 11],
+          [13, 11]
+        ],
+        "speed": 22
+      }
+    },
+    {
+      "sheet": "characters/town_elder.png",
+      "x": 8,
+      "y": 24,
+      "name": "ta_poem",
+      "facing": "front"
+    },
+    {
+      "sheet": "characters/town_hijab_teacher.png",
+      "x": 36,
+      "y": 17,
+      "name": "kak_fatimah",
+      "facing": "left",
+      "anim": "walk",
+      "patrol": {
+        "path": [
+          [38, 17],
+          [23, 17]
+        ],
+        "speed": 18
+      }
+    }
+  ]
+}

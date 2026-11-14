@@ -219,7 +219,99 @@ export function buildMulticulturalVillage(): MapDoc {
   return scatterDecor(applyOps(base, ops));
 }
 
+/**
+ * `city_crossing`: a brick-town 4-way intersection. Asphalt roads (lane dashes, zebra crossings, a
+ * manhole, drain grates, puddles) meet at the centre, framed by 2-tile sidewalks with rounded curb
+ * corners; brick rowhouses, an apartment with a fire escape, a garage and a corner shop line the
+ * blocks, big street trees overhang the road, and the south-west block is a small green.
+ */
+export function buildCityCrossing(): MapDoc {
+  const W = 40;
+  const H = 30;
+  const base = createMap({ id: "city_crossing", name: "สี่แยกเมืองอิฐ · Brick-town crossing (top-down)", width: W, height: H });
+  const RX = 18; // north–south road: columns 18..20, lane on 19
+  const RY = 13; // east–west road: rows 13..15, lane on 14
+  const place = (kind: string, x: number, y: number, name?: string): MapOp => ({ op: "place", kind, x, y, ...(name ? { name } : {}) });
+  const cells = (list: ReadonlyArray<readonly [number, number]>) => list.map(([x, y]) => [x, y] as [number, number]);
+  const laneEW: Array<[number, number]> = [];
+  for (let x = 0; x < W; x++) if (x < RX - 3 || x > RX + 5) laneEW.push([x, RY + 1]);
+  const laneNS: Array<[number, number]> = [];
+  for (let y = 0; y < H; y++) if (y < RY - 3 || y > RY + 5) laneNS.push([RX + 1, y]);
+  const ops: MapOp[] = [
+    // pavement everywhere, then the roads and the green
+    { op: "fill", layer: "ground", code: "sidewalk", x: 0, y: 0, w: W, h: H },
+    { op: "fill", layer: "ground", code: "road", x: 0, y: RY, w: W, h: 3 },
+    { op: "fill", layer: "ground", code: "road", x: RX, y: 0, w: 3, h: H },
+    { op: "fill", layer: "ground", code: "grass", x: 0, y: 19, w: 16, h: 11 },
+    // road markings: lane dashes stop short of the zebra crossings
+    { op: "paint", layer: "decor", code: "lane_ew", cells: laneEW },
+    { op: "paint", layer: "decor", code: "lane_ns", cells: laneNS },
+    { op: "fill", layer: "decor", code: "crosswalk_ew", x: RX - 2, y: RY, w: 2, h: 3 },
+    { op: "fill", layer: "decor", code: "crosswalk_ew", x: RX + 3, y: RY, w: 2, h: 3 },
+    { op: "fill", layer: "decor", code: "crosswalk_ns", x: RX, y: RY - 2, w: 3, h: 2 },
+    { op: "fill", layer: "decor", code: "crosswalk_ns", x: RX, y: RY + 3, w: 3, h: 2 },
+    { op: "paint", layer: "decor", code: "manhole", cells: cells([[8, RY], [RX + 2, 22], [31, RY + 2]]) },
+    { op: "paint", layer: "decor", code: "grate", cells: cells([[4, RY], [27, RY], [RX, 6], [RX + 2, 25]]) },
+    { op: "paint", layer: "decor", code: "puddle", cells: cells([[12, RY + 2], [26, RY], [RX, 21], [36, RY + 2]]) },
+    // north-west block: rowhouses + apartment facing the main road, flat roofs behind
+    place("brick_roof", 0, 2),
+    place("brick_roof", 4, 2),
+    place("brick_roof", 8, 0),
+    place("brick_rowhouse", 0, 6, "Rowhouse1"),
+    place("brick_rowhouse_brown", 4, 6, "Rowhouse2"),
+    place("brick_apartment", 8, 4, "Apartment"),
+    // north-east block: corner shop on the crossing, rowhouses, a garage
+    place("brick_roof", 23, 2),
+    place("brick_roof", 28, 2),
+    place("brick_roof", 35, 2),
+    place("brick_shop_corner", 23, 6, "CornerShop"),
+    place("brick_rowhouse", 28, 6, "Rowhouse3"),
+    place("brick_garage", 32, 7, "Garage"),
+    place("brick_rowhouse_brown", 35, 6, "Rowhouse4"),
+    // south-east block: roofs at the back, fronts on the south street
+    place("brick_roof", 23, 19),
+    place("brick_roof", 31, 19),
+    place("brick_rowhouse_brown", 23, 23, "Rowhouse5"),
+    place("brick_rowhouse", 27, 23, "Rowhouse6"),
+    place("brick_apartment", 31, 21, "Apartment2"),
+    place("brick_garage", 37, 24),
+    // street trees: trunks on the south kerb, canopies over the road
+    place("street_tree_large", 1, 14),
+    place("street_tree_large", 8, 14),
+    place("street_tree_large", 24, 14),
+    place("street_tree_large", 33, 14),
+    place("street_tree_large", 21, 26),
+    place("street_tree_large", 6, 22),
+    place("street_tree_large", 11, 25),
+    // poles, lamps, postbox, shrubs
+    place("lamp_pole", 14, 10),
+    place("lamp_pole", 22, 10),
+    place("lamp_pole", 14, 14),
+    place("lamp_pole", 26, 26),
+    place("utility_pole", 6, 9),
+    place("utility_pole", 30, 13),
+    place("postbox_red", 21, 11),
+    ...cells([[0, 19], [2, 19], [13, 19], [15, 19], [0, 27], [15, 27], [23, 18], [25, 18], [37, 18], [39, 18], [14, 4], [15, 4]]).map(([x, y]) => place("shrub", x, y)),
+    // leaves under the trees
+    { op: "paint", layer: "decor", code: "leaves", cells: cells([[2, 16], [5, 17], [9, 16], [11, 17], [25, 16], [28, 17], [34, 16], [37, 17], [3, RY + 2], [26, RY + 2], [21, 28]]) },
+    // spawn points
+    { op: "spawn", name: "player", x: 17, y: 12, facing: "front" },
+    { op: "spawn", name: "shop", x: 25, y: 11, facing: "back" },
+    { op: "spawn", name: "apartment", x: 10, y: 11, facing: "back" },
+    { op: "spawn", name: "park", x: 8, y: 23, facing: "front" },
+    { op: "spawn", name: "south_street", x: 27, y: 28, facing: "back" },
+    // cast
+    { op: "character", sheet: sheet("town_student"), name: "phi_fon", x: 17, y: 12, facing: "front" },
+    { op: "character", sheet: sheet("town_vendor"), name: "pa_daeng", x: 25, y: 11, facing: "front" },
+    { op: "character", sheet: sheet("town_kid"), name: "ton", x: 3, y: 11, facing: "right", anim: "walk", patrol: { path: [[1, 11], [13, 11]], speed: 22 } },
+    { op: "character", sheet: sheet("town_elder"), name: "ta_poem", x: 8, y: 24, facing: "front" },
+    { op: "character", sheet: sheet("town_hijab_teacher"), name: "kak_fatimah", x: 36, y: 17, facing: "left", anim: "walk", patrol: { path: [[38, 17], [23, 17]], speed: 18 } },
+  ];
+  return scatterDecor(applyOps(base, ops));
+}
+
 export const DEMO_MAPS: Record<string, () => MapDoc> = {
   thai_village_topdown: buildThaiVillage,
   multicultural_village: buildMulticulturalVillage,
+  city_crossing: buildCityCrossing,
 };

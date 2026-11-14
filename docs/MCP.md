@@ -66,6 +66,11 @@ Example `edit_map` arguments:
 }
 ```
 
+City streets: fill `sidewalk`, then `road` strips on top (curbs and rounded corners come automatically), then
+decor `lane_ew` / `lane_ns`, `crosswalk_ew` / `crosswalk_ns`, `manhole`, `grate`, `puddle`, `leaves`, and objects
+such as `brick_rowhouse`, `brick_apartment`, `brick_shop_corner`, `street_tree_large`, `lamp_pole` (see the
+`city_crossing` sample).
+
 Layer codes accept names too (`water`, `flowers`, `block`, `open`, `erase`). Bad ops come back as an error
 result (`Unknown object kind "castle"`); validation problems as
 `{ "severity": "error", "path": "layers.ground[3]", "x": 12, "y": 3, "message": "Unknown ground code \"x\" at 12,3" }`.
