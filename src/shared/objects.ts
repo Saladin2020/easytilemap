@@ -1,5 +1,6 @@
 /**
- * Object catalog for the sample tileset: stilt houses, temple, market stall, trees, banana plants…
+ * Object catalog for the sample tileset: stilt houses, temple, mosque, Tadika school, Malay kampung
+ * houses, Chinese-Thai shrine, market and halal stalls, kolek boats, trees, banana plants…
  * Each object is a procedurally painted PNG (CC0) with a footprint (solid tiles) used for collision.
  */
 import { c, noise, Pix, type Rgba, type View } from "./pixel.js";
@@ -36,6 +37,14 @@ export const OBJECT_KINDS: readonly ObjectKind[] = [
   { kind: "haystack", name: "Rice straw stack", nameTh: "กองฟาง", category: "prop", w: 2, h: 2, solid: { x: 0, y: 1, w: 2, h: 1 } },
   { kind: "water_jar", name: "Water jar (ong)", nameTh: "โอ่งน้ำ", category: "prop", w: 1, h: 1, solid: { x: 0, y: 0, w: 1, h: 1 } },
   { kind: "lantern_post", name: "Lantern post", nameTh: "เสาโคมไฟ", category: "prop", w: 1, h: 2, solid: { x: 0, y: 1, w: 1, h: 1 } },
+  // Muslim kampung + Chinese-Thai (multicultural village)
+  { kind: "mosque", name: "Wooden mosque (Talo Mano style)", nameTh: "มัสยิด", category: "building", w: 7, h: 7, solid: { x: 0, y: 3, w: 7, h: 4 } },
+  { kind: "tadika", name: "Tadika / madrasah school", nameTh: "โรงเรียนตาดีกา", category: "building", w: 5, h: 4, solid: { x: 0, y: 2, w: 5, h: 2 } },
+  { kind: "kampung_house", name: "Malay raised house", nameTh: "บ้านมลายู", category: "building", w: 5, h: 5, solid: { x: 0, y: 2, w: 5, h: 3 } },
+  { kind: "halal_stall", name: "Halal food stall", nameTh: "แผงอาหารฮาลาล", category: "building", w: 3, h: 3, solid: { x: 0, y: 2, w: 3, h: 1 } },
+  { kind: "chinese_shrine", name: "Chinese-Thai shrine", nameTh: "ศาลเจ้า", category: "building", w: 3, h: 3, solid: { x: 0, y: 1, w: 3, h: 2 } },
+  { kind: "fish_rack", name: "Fish drying rack", nameTh: "ราวตากปลา", category: "prop", w: 2, h: 1, solid: { x: 0, y: 0, w: 2, h: 1 } },
+  { kind: "kolek", name: "Kolek boat", nameTh: "เรือกอและ", category: "floor", w: 3, h: 1, solid: null, floor: true },
   { kind: "boat", name: "Long-tail boat", nameTh: "เรือหางยาว", category: "floor", w: 2, h: 1, solid: null, floor: true },
   { kind: "bridge_h", name: "Plank bridge (east–west)", nameTh: "สะพานไม้ (แนวนอน)", category: "floor", w: 3, h: 1, solid: null, floor: true },
   { kind: "bridge_v", name: "Plank bridge (north–south)", nameTh: "สะพานไม้ (แนวตั้ง)", category: "floor", w: 1, h: 3, solid: null, floor: true },
@@ -315,7 +324,179 @@ function drawBridge(v: View, horizontal: boolean): void {
   }
 }
 
+// ---------------------------------------------------------------- Muslim kampung / multicultural
+
+const CHENGAL = [c("#7c4a28"), c("#9c6436"), c("#bc8248"), c("#5a321c")] as const;
+const TILE_ROOF = [c("#a4482a"), c("#b8562a"), c("#d4743a"), c("#7a3420")] as const;
+const M_GREEN = c("#1a6a48");
+const M_GREEN_HI = c("#4aa874");
+const GOLD = c("#e8b440");
+
+/** Crescent: a disc minus an offset disc. */
+function crescent(v: View, cx: number, cy: number, r: number, col: Rgba): void {
+  for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
+    if (x * x + y * y > r * r + 0.5) continue;
+    if ((x - r * 0.5) ** 2 + (y + r * 0.25) ** 2 <= (r * 0.78) ** 2) continue;
+    v.set(cx + x, cy + y, col);
+  }
+}
+
+function drawMosque(v: View): void {
+  // 112×112: raised chengal prayer hall, two-tier tile roof, minaret with a small dome and crescent
+  v.shadow(58, 106, 54, 6);
+  // minaret (left)
+  for (let y = 26; y < 100; y++) for (let x = 4; x < 20; x++) v.set(x, y, x % 4 === 3 ? CHENGAL[3] : x < 8 ? CHENGAL[2] : CHENGAL[1]);
+  v.rect(9, 40, 6, 9, c("#24160e"));
+  v.rect(9, 64, 6, 9, c("#24160e"));
+  roof(v, 1, 22, 20, 28, TILE_ROOF, false);
+  v.rect(7, 16, 10, 4, c("#e2dccc"));
+  v.ellipse(12, 12, 6, 6, (x, y, dx, dy) => (dy > 0.3 ? null : dx < -0.2 && dy < -0.2 ? M_GREEN_HI : M_GREEN));
+  v.vline(12, 2, 6, GOLD);
+  crescent(v, 12, 2, 2, GOLD);
+  // prayer hall
+  for (const px of [26, 48, 70, 92, 106]) v.rect(px, 92, 3, 12, CHENGAL[3]);
+  planks(v, 24, 62, 86, 30, true);
+  v.hline(24, 109, 91, CHENGAL[3]);
+  for (let x = 24; x < 110; x++) for (let y = 62; y < 66; y++) if ((x + y) % 4 === 0) v.set(x, y, c("#2a1a12"));
+  for (const wx of [30, 44, 82, 96]) {
+    v.rect(wx, 70, 7, 14, CHENGAL[3]);
+    v.rect(wx + 1, 71, 5, 12, M_GREEN);
+    for (let y = 73; y < 83; y += 3) v.hline(wx + 1, wx + 5, y, c("#125038"));
+  }
+  // arched door + stairs
+  v.rect(60, 70, 14, 22, c("#1e140e"));
+  v.ellipse(67, 70, 7, 5, (x, y, dx, dy) => (dy < 0 ? c("#1e140e") : null));
+  v.vline(60, 66, 91, CHENGAL[2]);
+  v.vline(73, 66, 91, CHENGAL[2]);
+  for (let i = 0; i < 4; i++) v.rect(58, 93 + i * 4, 18, 2, CHENGAL[2]);
+  // roofs
+  roof(v, 20, 111, 44, 64, TILE_ROOF, false);
+  roof(v, 34, 97, 24, 44, TILE_ROOF, false);
+  v.vline(40, 18, 24, GOLD);
+  v.vline(91, 18, 24, GOLD);
+  // sign board
+  v.rect(56, 46, 22, 8, M_GREEN);
+  v.hline(56, 77, 46, GOLD);
+  for (let x = 59; x < 75; x += 3) v.rect(x, 49, 2, 2, c("#f6d470"));
+  v.outline(INK);
+}
+
+function drawTadika(v: View): void {
+  // 80×64: Tadika (ตาดีกา) / madrasah: a one-storey wooden classroom, green roof, sign, flag pole
+  v.shadow(40, 60, 38, 4);
+  for (const px of [6, 38, 70]) v.rect(px, 50, 3, 10, CHENGAL[3]);
+  planks(v, 4, 28, 72, 22, true);
+  v.hline(4, 75, 49, CHENGAL[3]);
+  for (const wx of [10, 26, 50, 62]) {
+    v.rect(wx, 33, 8, 9, c("#2b1b10"));
+    v.rect(wx + 1, 34, 6, 7, c("#f0e6c8"));
+    v.vline(wx + 4, 34, 40, c("#2b1b10"));
+  }
+  v.rect(38, 32, 9, 17, c("#2b1b10"));
+  roof(v, 0, 79, 8, 28, [c("#1a6a48"), c("#2a8a5c"), c("#4aa874"), c("#125038")], false);
+  v.rect(26, 12, 28, 8, c("#f4ecdc"));
+  v.hline(26, 53, 12, GOLD);
+  for (let x = 29; x < 51; x += 4) v.rect(x, 15, 3, 2, M_GREEN);
+  crescent(v, 40, 4, 2, GOLD);
+  v.outline(INK);
+}
+
+function drawKampungHouse(v: View): void {
+  // 80×80: rumah Melayu: stilts, pale green walls with white trim, sun-ray gable, stairs + foot-wash jar
+  v.shadow(40, 74, 38, 6);
+  for (const px of [6, 22, 40, 58, 72]) v.rect(px, 58, 3, 16, c("#5e3b20"));
+  for (let y = 30; y < 58; y++) for (let x = 4; x < 76; x++) v.set(x, y, x % 4 === 3 ? c("#4a7e66") : x % 4 === 0 ? c("#b8dcc2") : c("#90c2a4"));
+  v.hline(4, 75, 57, c("#f2eee2"));
+  v.hline(4, 75, 30, c("#f2eee2"));
+  for (const wx of [12, 56]) {
+    v.rect(wx, 36, 10, 9, c("#f2eee2"));
+    v.rect(wx + 1, 37, 8, 7, c("#2b1b10"));
+    v.vline(wx + 5, 37, 43, c("#f2eee2"));
+    for (let x = wx; x < wx + 10; x += 2) v.set(x, 47, c("#f2eee2"));
+  }
+  v.rect(34, 36, 12, 21, c("#f2eee2"));
+  v.rect(35, 37, 10, 20, c("#8a5a32"));
+  for (let i = 0; i < 5; i++) v.rect(34, 58 + i * 4, 12, 2, TEAK[2]);
+  roof(v, 0, 79, 6, 30, [c("#9a3a2a"), c("#b24a32"), c("#c8603c"), c("#7a2c22")], false);
+  // sun-ray gable board in the roof centre
+  v.poly([[40, 8], [52, 26], [28, 26]], (x, y) => (Math.floor(Math.atan2(26 - y, x - 40) * 6) % 2 ? c("#b8dcc2") : c("#90c2a4")));
+  v.line(28, 26, 40, 8, c("#f2eee2"));
+  v.line(52, 26, 40, 8, c("#f2eee2"));
+  v.line(40, 8, 37, 4, c("#f2eee2"));
+  v.line(40, 8, 43, 4, c("#f2eee2"));
+  v.ellipse(52, 72, 3, 3, c("#8a4a26"));
+  v.ellipse(52, 70, 2, 1, c("#3a5f78"));
+  v.outline(INK);
+}
+
+function drawHalalStall(v: View): void {
+  v.shadow(24, 44, 22, 4);
+  v.rect(4, 18, 2, 24, TEAK[3]);
+  v.rect(42, 18, 2, 24, TEAK[3]);
+  v.rect(3, 28, 42, 12, TEAK[1]);
+  v.hline(3, 44, 28, TEAK[2]);
+  for (const px of [10, 20]) { v.ellipse(px, 26, 4, 2, c("#c0c8d0")); v.hline(px - 3, px + 3, 25, px === 10 ? c("#e0a224") : c("#cc3a34")); }
+  v.ellipse(32, 26, 4, 2, c("#f2eee2"));
+  v.ellipse(32, 25, 3, 1, c("#5a7ad0"));
+  for (let x = 0; x < 48; x++) {
+    const stripe = Math.floor(x / 6) % 2 ? c("#f4ecdc") : M_GREEN;
+    for (let y = 4; y < 18; y++) if (!(y > 15 && (x % 6 === 0 || x % 6 === 5))) v.set(x, y, stripe);
+  }
+  v.hline(0, 47, 17, c("#125038"));
+  v.rect(14, 30, 20, 9, M_GREEN);
+  crescent(v, 21, 34, 4, c("#ffffff"));
+  for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]] as const) v.set(26 + dx, 33 + dy, c("#f6d470"));
+  v.outline(INK);
+}
+
+function drawChineseShrine(v: View): void {
+  v.shadow(24, 44, 22, 4);
+  v.rect(4, 22, 40, 20, c("#a4262c"));
+  for (const px of [6, 38]) v.rect(px, 20, 4, 22, c("#cc3a34"));
+  v.rect(18, 26, 12, 16, c("#2a1410"));
+  v.rect(17, 24, 14, 3, c("#e8b440"));
+  for (let y = 8; y < 22; y++) {
+    const half = Math.round(16 + ((y - 8) / 13) * 8);
+    v.hline(24 - half, 23 + half, y, (y - 8) % 3 === 0 ? c("#125038") : c("#2a8a5c"));
+  }
+  v.set(0, 20, c("#f6c840"));
+  v.set(47, 20, c("#f6c840"));
+  v.hline(14, 33, 7, c("#f6c840"));
+  for (const lx of [12, 35]) { v.ellipse(lx, 26, 2.5, 3, c("#e04a32")); v.set(lx, 25, c("#ffd27a")); }
+  v.rect(22, 36, 4, 4, c("#e8b440"));
+  v.outline(INK);
+}
+
+function drawFishRack(v: View): void {
+  v.shadow(16, 14, 14, 2);
+  v.rect(2, 2, 2, 13, c("#a4a23c"));
+  v.rect(28, 2, 2, 13, c("#a4a23c"));
+  v.rect(2, 3, 28, 2, c("#c8c45a"));
+  v.rect(4, 5, 24, 7, c("#8a8a7a", 120));
+  for (let i = 0; i < 6; i++) { v.rect(5 + i * 4, 6, 2, 5, c("#c8c2b2")); v.set(5 + i * 4, 6, c("#f2eee2")); }
+  v.outline(INK);
+}
+
+function drawKolek(v: View): void {
+  // 48×16: painted kolek, high curled bow (right) and stern (left)
+  v.poly([[0, 3], [8, 7], [40, 7], [47, 2], [44, 13], [4, 13]], c("#2a8a5c"));
+  v.poly([[2, 5], [8, 8], [40, 8], [45, 4], [43, 10], [5, 10]], c("#cc3a34"));
+  v.hline(6, 42, 9, c("#f6c840"));
+  for (let x = 8; x < 40; x += 4) v.set(x, 11, c("#f2eee2"));
+  v.rect(18, 7, 10, 2, c("#3a6a8a"));
+  v.set(0, 2, c("#f6c840"));
+  v.set(47, 1, c("#f6c840"));
+  v.outline(INK);
+}
+
 const PAINTERS: Record<string, (v: View) => void> = {
+  mosque: drawMosque,
+  tadika: drawTadika,
+  kampung_house: drawKampungHouse,
+  halal_stall: drawHalalStall,
+  chinese_shrine: drawChineseShrine,
+  fish_rack: drawFishRack,
+  kolek: drawKolek,
   house_wood: drawHouseWood,
   house_small: drawHouseSmall,
   temple: drawTemple,

@@ -1,0 +1,495 @@
+{
+  "format": "easytilemap/1",
+  "id": "multicultural_village",
+  "name": "หมู่บ้านพหุวัฒนธรรม · Multicultural village (top-down)",
+  "tileSize": 16,
+  "width": 44,
+  "height": 30,
+  "tileset": "thai_village",
+  "viewport": {
+    "width": 480,
+    "height": 270
+  },
+  "layers": {
+    "ground": [
+      "gssssssssssgddggggggggggsssssssssssggggggggg",
+      "gssssssssssgddggggggggggsssssssssssggppppppg",
+      "gssssssssssgddggggggggggsssssssssssggppppppg",
+      "gssssssssssgddggggggggggsssssssssssggppppppg",
+      "gssssssssssgddggggggggggsssssssssssggppppppg",
+      "gssssssssssgddgsssssggggsssssssssssggppppppg",
+      "gssssssssssgddgsssssggggsssssssssssggppppppg",
+      "gssssssssssgddgsssssggggsssssssssssggggggggg",
+      "gssssssssssgddgsssssggggsssssssssssggggggggg",
+      "gssssssssssgddgsssssgggggggggddggggggggggggg",
+      "gssssssssssgddgsssssgggggggggddggggggggggggg",
+      "ggggggggggggddgggggggggggggggddggggggggggggg",
+      "ggggggggggggddgggggggggggggggddggggggggggggg",
+      "dddddddddddddddddddddddddddddddddddddddddddd",
+      "dddddddddddddddddddddddddddddddddddddddddddd",
+      "ggggggggddggggggggggggggggggggggggggddgggggg",
+      "ggggggggddgggggggggwwgggggggggggggggddgggggg",
+      "ggggggggddgggggggggwwgggggggggggggggddgggggg",
+      "ggggggggddgggggggggwwgggggggggggggggddgggggg",
+      "ggggggggddgggggggggwwgggggggggggggggddgggggg",
+      "ggggggggddgggggggggwwgggggggggggggggddgggggg",
+      "ggggggggddgggggggggwwgggggggggggggggddgggggg",
+      "ggggggbbbbbbbbbbbbgwwgggggggggggggggddgggggg",
+      "bbbbbbbbbbbbbbbbbbbwwbbbbbbbbbbbbbbbbbbbbbbb",
+      "bbbbbbbbbbbbbbbbbbbwwbbbbbbbbbbbbbbbbbbbbbbb",
+      "bbbbbbbbbbbbbbbbbbbwwbbbbbbbbbbbbbbbbbbbbbbb",
+      "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+      "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+      "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+      "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
+    ],
+    "decor": [
+      "r....................................f....tt",
+      "...................t........................",
+      "............................................",
+      "...............t...........................t",
+      ".......................r....................",
+      "............................................",
+      ".............e..............................",
+      "..............f......................t.f....",
+      "...........f...........................t....",
+      "f....................t.........f............",
+      "............................t...............",
+      "f........t....f................t..........t.",
+      "...f...u..........t........t........f.....u.",
+      "...e.e...........e..e...e...................",
+      "....................e....e.....e............",
+      "..........t.......t............r............",
+      "...............t.tn...........t...........t.",
+      ".....................n......................",
+      "............f.....n..n.r.r............t.....",
+      ".......t.ef......fn..n......r..t............",
+      ".......f..t......f...n.....r..........t.....",
+      ".kkkk...e.........n..n.......t..............",
+      "...f..............n.....................f...",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................"
+    ],
+    "collision": [
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................",
+      "............................................"
+    ]
+  },
+  "objects": [
+    {
+      "kind": "temple",
+      "x": 3,
+      "y": 1,
+      "name": "Temple"
+    },
+    {
+      "kind": "sala",
+      "x": 8,
+      "y": 6,
+      "name": "Sala"
+    },
+    {
+      "kind": "spirit_house",
+      "x": 2,
+      "y": 8
+    },
+    {
+      "kind": "chinese_shrine",
+      "x": 16,
+      "y": 6,
+      "name": "Shrine"
+    },
+    {
+      "kind": "mosque",
+      "x": 26,
+      "y": 1,
+      "name": "Mosque"
+    },
+    {
+      "kind": "tadika",
+      "x": 32,
+      "y": 8,
+      "name": "Tadika"
+    },
+    {
+      "kind": "market_stall",
+      "x": 15,
+      "y": 15,
+      "name": "StallFruit"
+    },
+    {
+      "kind": "halal_stall",
+      "x": 22,
+      "y": 15,
+      "name": "StallHalal"
+    },
+    {
+      "kind": "market_stall",
+      "x": 25,
+      "y": 15,
+      "name": "StallSweets"
+    },
+    {
+      "kind": "halal_stall",
+      "x": 28,
+      "y": 15,
+      "name": "StallRoti"
+    },
+    {
+      "kind": "house_wood",
+      "x": 1,
+      "y": 16,
+      "name": "HouseTon"
+    },
+    {
+      "kind": "house_small",
+      "x": 11,
+      "y": 17,
+      "name": "HouseMee"
+    },
+    {
+      "kind": "kampung_house",
+      "x": 30,
+      "y": 18,
+      "name": "HouseMakYah"
+    },
+    {
+      "kind": "kampung_house",
+      "x": 39,
+      "y": 15,
+      "name": "HouseImam"
+    },
+    {
+      "kind": "kampung_house",
+      "x": 22,
+      "y": 8,
+      "name": "HouseFatimah"
+    },
+    {
+      "kind": "bridge_v",
+      "x": 19,
+      "y": 14
+    },
+    {
+      "kind": "bridge_v",
+      "x": 20,
+      "y": 14
+    },
+    {
+      "kind": "kolek",
+      "x": 3,
+      "y": 26,
+      "name": "KolekRed"
+    },
+    {
+      "kind": "kolek",
+      "x": 25,
+      "y": 27
+    },
+    {
+      "kind": "kolek",
+      "x": 33,
+      "y": 26
+    },
+    {
+      "kind": "boat",
+      "x": 13,
+      "y": 27
+    },
+    {
+      "kind": "fish_rack",
+      "x": 23,
+      "y": 23
+    },
+    {
+      "kind": "fish_rack",
+      "x": 26,
+      "y": 23
+    },
+    {
+      "kind": "fish_rack",
+      "x": 40,
+      "y": 24
+    },
+    {
+      "kind": "palm",
+      "x": 0,
+      "y": 21
+    },
+    {
+      "kind": "palm",
+      "x": 15,
+      "y": 22
+    },
+    {
+      "kind": "palm",
+      "x": 28,
+      "y": 22
+    },
+    {
+      "kind": "palm",
+      "x": 34,
+      "y": 22
+    },
+    {
+      "kind": "palm",
+      "x": 42,
+      "y": 21
+    },
+    {
+      "kind": "palm",
+      "x": 5,
+      "y": 22
+    },
+    {
+      "kind": "palm",
+      "x": 39,
+      "y": 10
+    },
+    {
+      "kind": "tree_mango",
+      "x": 15,
+      "y": 0
+    },
+    {
+      "kind": "tree_mango",
+      "x": 20,
+      "y": 1
+    },
+    {
+      "kind": "tree_mango",
+      "x": 36,
+      "y": 9
+    },
+    {
+      "kind": "banana",
+      "x": 6,
+      "y": 17
+    },
+    {
+      "kind": "banana",
+      "x": 13,
+      "y": 21
+    },
+    {
+      "kind": "banana",
+      "x": 41,
+      "y": 19
+    },
+    {
+      "kind": "bamboo",
+      "x": 0,
+      "y": 1
+    },
+    {
+      "kind": "bamboo",
+      "x": 0,
+      "y": 3
+    },
+    {
+      "kind": "bamboo",
+      "x": 0,
+      "y": 5
+    },
+    {
+      "kind": "bamboo",
+      "x": 11,
+      "y": 2
+    },
+    {
+      "kind": "bamboo",
+      "x": 11,
+      "y": 4
+    },
+    {
+      "kind": "water_jar",
+      "x": 34,
+      "y": 21
+    },
+    {
+      "kind": "water_jar",
+      "x": 25,
+      "y": 7
+    },
+    {
+      "kind": "lantern_post",
+      "x": 14,
+      "y": 11
+    },
+    {
+      "kind": "lantern_post",
+      "x": 23,
+      "y": 11
+    },
+    {
+      "kind": "lantern_post",
+      "x": 33,
+      "y": 11
+    }
+  ],
+  "spawns": [
+    {
+      "name": "player",
+      "x": 21,
+      "y": 13,
+      "facing": "front"
+    },
+    {
+      "name": "temple",
+      "x": 6,
+      "y": 9,
+      "facing": "back"
+    },
+    {
+      "name": "shrine",
+      "x": 17,
+      "y": 10,
+      "facing": "back"
+    },
+    {
+      "name": "mosque",
+      "x": 29,
+      "y": 9,
+      "facing": "back"
+    },
+    {
+      "name": "tadika",
+      "x": 34,
+      "y": 12,
+      "facing": "back"
+    },
+    {
+      "name": "market",
+      "x": 23,
+      "y": 14,
+      "facing": "back"
+    },
+    {
+      "name": "beach",
+      "x": 24,
+      "y": 25,
+      "facing": "front"
+    }
+  ],
+  "characters": [
+    {
+      "sheet": "characters/town_kid.png",
+      "x": 21,
+      "y": 13,
+      "name": "ton",
+      "facing": "front"
+    },
+    {
+      "sheet": "characters/town_kopiah_boy.png",
+      "x": 22,
+      "y": 13,
+      "name": "adam",
+      "facing": "left"
+    },
+    {
+      "sheet": "characters/town_monk.png",
+      "x": 5,
+      "y": 10,
+      "name": "luang_phi",
+      "facing": "right",
+      "anim": "walk",
+      "patrol": {
+        "path": [
+          [3, 10],
+          [9, 10]
+        ],
+        "speed": 16
+      }
+    },
+    {
+      "sheet": "characters/town_pak_cik.png",
+      "x": 30,
+      "y": 9,
+      "name": "pak_cik_ismail",
+      "facing": "front"
+    },
+    {
+      "sheet": "characters/town_hijab_teacher.png",
+      "x": 35,
+      "y": 12,
+      "name": "kak_fatimah",
+      "facing": "front"
+    },
+    {
+      "sheet": "characters/town_tadika_girl.png",
+      "x": 33,
+      "y": 13,
+      "name": "aisyah",
+      "facing": "right",
+      "anim": "walk",
+      "patrol": {
+        "path": [
+          [31, 13],
+          [37, 13]
+        ],
+        "speed": 18
+      }
+    },
+    {
+      "sheet": "characters/town_roti_seller.png",
+      "x": 29,
+      "y": 18,
+      "name": "bang_roti",
+      "facing": "front"
+    },
+    {
+      "sheet": "characters/town_vendor.png",
+      "x": 16,
+      "y": 18,
+      "name": "pa_daeng",
+      "facing": "front"
+    },
+    {
+      "sheet": "characters/town_fisher.png",
+      "x": 24,
+      "y": 24,
+      "name": "pak_hamid",
+      "facing": "front"
+    },
+    {
+      "sheet": "characters/town_elder.png",
+      "x": 4,
+      "y": 22,
+      "name": "ta_poem",
+      "facing": "right"
+    }
+  ]
+}

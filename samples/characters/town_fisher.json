@@ -1,0 +1,69 @@
+{
+  "format": "easysprite.native",
+  "view": "topdown",
+  "frameSize": 48,
+  "columns": 30,
+  "rows": 4,
+  "directions": [
+    "front",
+    "right",
+    "back",
+    "left"
+  ],
+  "frames": [
+    "idle",
+    "walk0",
+    "walk1",
+    "walk2",
+    "run0",
+    "run1",
+    "run2",
+    "run3",
+    "jump0",
+    "jump1",
+    "wave0",
+    "wave1",
+    "carry0",
+    "carry1",
+    "farm0",
+    "farm1",
+    "cheer0",
+    "cheer1",
+    "attack0",
+    "attack1",
+    "hurt0",
+    "hurt1",
+    "fall0",
+    "fall1",
+    "sleep0",
+    "sleep1",
+    "tired0",
+    "tired1",
+    "sit",
+    "crouch"
+  ],
+  "project": {
+    "id": "town_fisher",
+    "name": "Bang Man (Kolek Fisher, Kain Pelekat)",
+    "view": "topdown",
+    "selections": {
+      "body": "body_deep",
+      "face": "face_smile",
+      "hair_front": "hair_crop_front",
+      "shirt": "shirt_tshirt",
+      "pants": "pants_kain_pelekat",
+      "shoes": "shoes_sandals",
+      "accessory": "acc_fishing",
+      "hair_back": "hair_crop_back"
+    },
+    "colors": {
+      "body": "#8a5a3c",
+      "hair_front": "#2a221c",
+      "shirt": "#d8d0b8",
+      "pants": "#2f4a6e",
+      "shoes": "#8a6a44",
+      "accessory": "#6b7280",
+      "hair_back": "#2a221c"
+    }
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "format": "easysprite.native",
+  "view": "topdown",
+  "frameSize": 48,
+  "columns": 30,
+  "rows": 4,
+  "directions": [
+    "front",
+    "right",
+    "back",
+    "left"
+  ],
+  "frames": [
+    "idle",
+    "walk0",
+    "walk1",
+    "walk2",
+    "run0",
+    "run1",
+    "run2",
+    "run3",
+    "jump0",
+    "jump1",
+    "wave0",
+    "wave1",
+    "carry0",
+    "carry1",
+    "farm0",
+    "farm1",
+    "cheer0",
+    "cheer1",
+    "attack0",
+    "attack1",
+    "hurt0",
+    "hurt1",
+    "fall0",
+    "fall1",
+    "sleep0",
+    "sleep1",
+    "tired0",
+    "tired1",
+    "sit",
+    "crouch"
+  ],
+  "project": {
+    "id": "town_tadika_girl",
+    "name": "Nurul (Tadika Girl, School Tudung)",
+    "view": "topdown",
+    "selections": {
+      "body": "body_child_tan",
+      "face": "face_smile",
+      "hair_front": "hair_tudung_school_front",
+      "shirt": "shirt_baju_kurung",
+      "pants": "pants_skirt",
+      "shoes": "shoes_dark",
+      "accessory": "acc_backpack"
+    },
+    "colors": {
+      "body": "#c9956c",
+      "hair_front": "#f4f2ec",
+      "shirt": "#3f7fa6",
+      "pants": "#3f7fa6",
+      "shoes": "#221c18",
+      "accessory": "#c0587e"
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "format": "easysprite.native",
+  "view": "topdown",
+  "frameSize": 48,
+  "columns": 30,
+  "rows": 4,
+  "directions": [
+    "front",
+    "right",
+    "back",
+    "left"
+  ],
+  "frames": [
+    "idle",
+    "walk0",
+    "walk1",
+    "walk2",
+    "run0",
+    "run1",
+    "run2",
+    "run3",
+    "jump0",
+    "jump1",
+    "wave0",
+    "wave1",
+    "carry0",
+    "carry1",
+    "farm0",
+    "farm1",
+    "cheer0",
+    "cheer1",
+    "attack0",
+    "attack1",
+    "hurt0",
+    "hurt1",
+    "fall0",
+    "fall1",
+    "sleep0",
+    "sleep1",
+    "tired0",
+    "tired1",
+    "sit",
+    "crouch"
+  ],
+  "project": {
+    "id": "town_hijab_teacher",
+    "name": "Kru Aisyah (Hijab Teacher)",
+    "view": "topdown",
+    "selections": {
+      "body": "body_tan",
+      "face": "face_lashes",
+      "hair_front": "hair_hijab_front",
+      "shirt": "shirt_baju_kurung",
+      "pants": "pants_sarong",
+      "shoes": "shoes_dark"
+    },
+    "colors": {
+      "body": "#c9956c",
+      "hair_front": "#2f7a6a",
+      "shirt": "#e6d3a3",
+      "pants": "#2f5a6e",
+      "shoes": "#221c18"
+    }
+  }
+}

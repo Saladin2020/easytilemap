@@ -20,6 +20,8 @@ import {
   SW,
   W,
   blobCoord,
+  shoreCoord,
+  SHORE_ROW,
 } from "./autotile.js";
 import { c, noise, Pix, shade, type Rgba, type View } from "./pixel.js";
 import type { RgbaImage } from "./raster.js";
@@ -50,6 +52,10 @@ export const PALETTE = {
   mortar: c("#8e8676"),
   stoneRim: c("#6f6759"),
   ink: c("#2a1d13"),
+  sand: [c("#e8d3a0"), c("#dcc490"), c("#f0deb0")],
+  sandWet: c("#c8ae7a"),
+  sandShell: c("#fbf3e2"),
+  sandRim: c("#c9b07c"),
 } as const;
 
 // ---------------------------------------------------------------- base textures (period 16)
@@ -86,6 +92,11 @@ function terrainPx(t: Exclude<Terrain, "grass">, x: number, y: number, alt: bool
       if (noise(Math.floor(x / 3), y, 433 + s) < 0.06 && y % 5 === (alt ? 2 : 1)) return PALETTE.sparkle;
       return shade(n, PALETTE.water, [4, 3, 2]);
     }
+    case "sand": {
+      if (noise(x, y, 611 + s) < 0.025) return PALETTE.sandShell;
+      if (noise(x, y, 617 + s) < 0.04) return PALETTE.sandWet;
+      return shade(noise(x, y, 601 + s), PALETTE.sand, [3, 2, 2]);
+    }
     case "stone": {
       const off = Math.floor(y / 8) % 2 ? 4 : 0;
       if (y % 8 === 0 || (x + off) % 8 === 0) return PALETTE.mortar;
@@ -97,7 +108,7 @@ function terrainPx(t: Exclude<Terrain, "grass">, x: number, y: number, alt: bool
 }
 
 /** Grass shows this many px inside the tile on an open side. */
-const EDGE: Record<Exclude<Terrain, "grass">, number> = { dirt: 2, paddy: 1, water: 2, stone: 1 };
+const EDGE: Record<Exclude<Terrain, "grass">, number> = { dirt: 2, paddy: 1, water: 2, stone: 1, sand: 2 };
 
 function jit(along: number, side: number, t: string): number {
   return noise(along, side, t.length * 17) < 0.45 ? 1 : 0;
@@ -137,7 +148,7 @@ function insideTerrain(t: Exclude<Terrain, "grass">, mask: number, px: number, p
   return true;
 }
 
-function paintBlobTile(v: View, t: Exclude<Terrain, "grass">, mask: number, alt: boolean): void {
+function paintBlobTile(v: View, t: Exclude<Terrain, "grass">, mask: number, alt: boolean, shore = false): void {
   const ins = (x: number, y: number) => insideTerrain(t, mask, x, y);
   for (let y = 0; y < T; y++) {
     for (let x = 0; x < T; x++) {
@@ -146,8 +157,10 @@ function paintBlobTile(v: View, t: Exclude<Terrain, "grass">, mask: number, alt:
       const near2 = !ins(x - 2, y) || !ins(x + 2, y) || !ins(x, y - 2) || !ins(x, y + 2);
       if (!inside) {
         const touches = ins(x - 1, y) || ins(x + 1, y) || ins(x, y - 1) || ins(x, y + 1);
-        let col = grassPx(x, y, 0);
-        if (touches && (t === "water" || t === "paddy")) col = PALETTE.bank;
+        let col = shore ? terrainPx("sand", x, y, false) : grassPx(x, y, 0);
+        if (shore) {
+          if (touches) col = PALETTE.sandWet;
+        } else if (touches && (t === "water" || t === "paddy")) col = PALETTE.bank;
         else if (touches && t === "dirt" && noise(x, y, 77) < 0.5) col = PALETTE.grassDark;
         v.set(x, y, col);
         continue;
@@ -164,6 +177,8 @@ function paintBlobTile(v: View, t: Exclude<Terrain, "grass">, mask: number, alt:
         if (near1) col = PALETTE.dirtRim;
       } else if (t === "stone") {
         if (near1) col = PALETTE.stoneRim;
+      } else if (t === "sand") {
+        if (near1) col = PALETTE.sandRim;
       }
       v.set(x, y, col);
     }
@@ -283,7 +298,7 @@ function paintMarkers(collision: View, spawn: View): void {
 
 let atlasCache: RgbaImage | null = null;
 
-/** The 128×432 sample atlas (cached). */
+/** The 128×624 sample atlas (cached). */
 export function generateAtlas(): RgbaImage {
   if (atlasCache) return atlasCache;
   const p = new Pix(ATLAS_COLUMNS * T, ATLAS_ROWS * T);
@@ -297,6 +312,12 @@ export function generateAtlas(): RgbaImage {
     const spare = blobCoord(t, 47);
     paintBlobTile(tile(spare.col, spare.row), t, 255, true);
   }
+  BLOB_MASKS.forEach((mask, i) => {
+    const at = shoreCoord(i);
+    paintBlobTile(tile(at.col, at.row), "water", mask, false, true);
+  });
+  const shoreSpare = shoreCoord(47);
+  paintBlobTile(tile(shoreSpare.col, shoreSpare.row), "water", 255, true, true);
   DECOR_CODES.forEach((code, i) => paintDecor(tile(i, DECOR_ROW), code));
   paintMarkers(tile(0, MARKER_ROW), tile(1, MARKER_ROW));
   atlasCache = p.img;
@@ -319,6 +340,7 @@ export function tilesetMeta() {
     layout: {
       grass: { row: 0, variants: GRASS_VARIANTS },
       terrains: Object.fromEntries(OVERLAY_TERRAINS.map((t) => [t, { firstRow: blobCoord(t, 0).row, tiles: 48 }])),
+      shore: { firstRow: SHORE_ROW, tiles: 48, note: "water next to sand: open edges show sand" },
       decor: { row: DECOR_ROW, codes: [...DECOR_CODES] },
       markers: { row: MARKER_ROW, collision: 0, spawn: 1 },
     },
