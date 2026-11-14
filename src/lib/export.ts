@@ -16,6 +16,7 @@ import {
   blobCoord,
   decorCoord,
   resolveGround,
+  shoreCoord,
 } from "../shared/autotile.js";
 import { characterLabel, DEFAULT_GROUND_ROW, facingRow, feetPx, frameColumn, walkColumns } from "../shared/characters.js";
 import { collisionGrid, collisionRects } from "../shared/map.js";
@@ -56,6 +57,7 @@ const TERRAIN_COLORS: Record<string, string> = {
   paddy: "Color(0.55, 0.75, 0.4, 1)",
   water: "Color(0.23, 0.53, 0.66, 1)",
   stone: "Color(0.76, 0.73, 0.66, 1)",
+  sand: "Color(0.91, 0.83, 0.63, 1)",
 };
 
 class Writer {
@@ -129,7 +131,7 @@ export function decorCells(doc: MapDoc): GodotCell[] {
   return out;
 }
 
-/** TileSet with one terrain set (match corners and sides): grass = 0, dirt/paddy/water/stone = 1..4. */
+/** TileSet with one terrain set (match corners and sides): grass = 0, dirt/paddy/water/stone/sand = 1..5. */
 export function buildTileSetTres(texturePath: string, tileSize = 16): string {
   const lines: string[] = [];
   const terrainId = (t: string) => (TERRAINS as readonly string[]).indexOf(t);
@@ -151,6 +153,15 @@ export function buildTileSetTres(texturePath: string, tileSize = 16): string {
     const spare = blobCoord(t, 47);
     tile(spare.col, spare.row, id, () => id, 0.5);
   }
+  // shore: water tiles whose open sides are beach sand
+  const water = terrainId("water");
+  const sand = terrainId("sand");
+  BLOB_MASKS.forEach((mask, i) => {
+    const at = shoreCoord(i);
+    tile(at.col, at.row, water, (bit) => (mask & bit ? water : sand), 0.01);
+  });
+  const shoreSpare = shoreCoord(47);
+  tile(shoreSpare.col, shoreSpare.row, water, () => water, 0.01);
   DECOR_CODES.forEach((_, i) => tile(i, DECOR_ROW, null));
   const terrains = TERRAINS.map((t, i) => `terrain_set_0/terrain_${i}/name = "${t}"\nterrain_set_0/terrain_${i}/color = ${TERRAIN_COLORS[t]}`).join("\n");
   return `[gd_resource type="TileSet" load_steps=3 format=3]
@@ -509,7 +520,7 @@ Open this folder as a Godot project and press F5 (arrow keys pan the preview cam
 
 ${base}.tscn
   Ground   TileMapLayer — ${base}_tileset.tres, terrain set 0 "match corners and sides":
-           grass(0) dirt(1) paddy(2) water(3) stone(4). Paint more with the Terrains tab.
+           grass(0) dirt(1) paddy(2) water(3) stone(4) sand(5). Paint more with the Terrains tab.
   Decor    TileMapLayer (flowers, rocks, lotus, reeds, fence…)
   Floor    bridges / boats (Sprite2D, under characters)
   World    y_sort_enabled: objects (Sprite2D, origin at their base) + characters

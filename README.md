@@ -27,7 +27,7 @@
 
 **แผนที่มุมบน · ออโต้ไทล์ · หมู่บ้านไทย · ตัวละคร Easy Sprite**  
 Paint top-down 16px pixel-art maps with blob-47 autotile terrain (grass, dirt road, rice paddy, canal, temple
-stone), a procedural Thai village tileset and object set, collision, spawn points and walking
+stone, beach sand), a procedural Thai village tileset and object set, collision, spawn points and walking
 [Easy Sprite](https://github.com/Saladin2020/easysprite) top-down characters — then export to **Godot 4.3+**
 (TileMapLayer + terrain TileSet) or **PixiJS v8**. The fourth sibling of Easy Sprite (characters),
 [Easy Scene](https://github.com/Saladin2020/easyscene) (side-view levels) and
@@ -46,13 +46,25 @@ stone), a procedural Thai village tileset and object set, collision, spawn point
   <img src="docs/assets/map-thai-village.png" width="900" alt="The thai_village_topdown demo: temple courtyard, market stalls, canal with bridges, paddies, stilt houses and six characters" />
 </p>
 
+<p align="center">
+  <img src="docs/assets/map-multicultural-village.png" width="900" alt="The multicultural_village demo: Buddhist temple, Chinese-Thai shrine and a wooden kampung mosque on one street, Tadika school, Malay raised houses, halal stalls and a beach with kolek boats" />
+</p>
+
+**Multicultural village · หมู่บ้านพหุวัฒนธรรม** — `multicultural_village` is a southern Thai coastal town where
+Buddhist, Muslim and Chinese-Thai neighbours share one main road: the temple (วัด) and its sala, a Chinese-Thai
+shrine (ศาลเจ้า), a Talo Mano-style wooden mosque (มัสยิด) with its minaret, a Tadika school (ตาดีกา), Malay
+raised houses (บ้านมลายู) next to Thai stilt houses, fruit and halal stalls side by side, and a beach (หาดทราย)
+where kolek boats (เรือกอและ) rest beside fish-drying racks. The cast mixes the Thai town characters with Muslim
+neighbours from Easy Sprite (hijab teacher, kopiah boy, Pak Cik in jubah, Tadika girl, roti seller, fisherman in
+kain pelekat). Spawns: `temple`, `shrine`, `mosque`, `tadika`, `market`, `beach`.
+
 ---
 
 ## What you get
 
 | Terrain | Objects | Characters | Export |
 | --- | --- | --- | --- |
-| 5 terrains on a character grid, **blob-47** autotile transitions (47 tiles per terrain, corner-aware), 8 grass variants + random terrain centres, 8 decor codes (flowers, lotus, reeds, fence…), collision layer (`#` block / `o` open) | 16 Thai village kinds: stilt houses, temple (ubosot), sala, market stall, spirit house, mango tree, palm, banana, bamboo, haystack, water jar, lantern post, boat, bridges — each with a solid footprint, y-sorted by base line | Easy Sprite **native top-down** sheets (front/right/back/left rows, idle + walk), placed by feet tile, facing + optional patrol path | Godot 4.3+ project (TileMapLayer ground + decor, `TileSet .tres` with terrain set + peering bits, AnimatedSprite2D characters with patrol, StaticBody2D collision, Marker2D spawns, Camera2D), PixiJS v8 loader + playable demo, PNG |
+| 6 terrains on a character grid, **blob-47** autotile transitions (47 tiles per terrain, corner-aware), beach sand with dedicated shore-water tiles, 8 grass variants + random terrain centres, 8 decor codes (flowers, lotus, reeds, fence…), collision layer (`#` block / `o` open) | 23 village kinds: stilt houses, temple (ubosot), sala, market stall, spirit house, wooden mosque, Tadika school, Malay kampung house, halal stall, Chinese-Thai shrine, fish rack, kolek, mango tree, palm, banana, bamboo, haystack, water jar, lantern post, long-tail boat, bridges — each with a solid footprint, y-sorted by base line | Easy Sprite **native top-down** sheets (front/right/back/left rows, idle + walk), placed by feet tile, facing + optional patrol path | Godot 4.3+ project (TileMapLayer ground + decor, `TileSet .tres` with terrain set + peering bits, AnimatedSprite2D characters with patrol, StaticBody2D collision, Marker2D spawns, Camera2D), PixiJS v8 loader + playable demo, PNG |
 
 * **Collision you don't have to paint.** Water, object footprints and floor objects (bridges open the canal)
   are derived; the collision layer only overrides.
@@ -105,7 +117,7 @@ and character palettes, inspector (name, facing, animation, flip, patrol), grid 
 }
 ```
 
-Ground codes `g` grass · `d` dirt · `p` paddy · `w` water · `s` stone. Decor `f t r l e u n k`, `.` empty.
+Ground codes `g` grass · `d` dirt · `p` paddy · `w` water · `s` stone · `b` beach sand. Decor `f t r l e u n k`, `.` empty.
 Full reference: **[docs/MAP_FORMAT.md](docs/MAP_FORMAT.md)**.
 
 ## CLI
@@ -131,7 +143,7 @@ easytilemap catalog · list · info · tileset · serve [--port 8808]
 | Preset | Output (`exports/<id>-<preset>/`) |
 | --- | --- |
 | `png` | `<id>.png` at `--scale` (default 2) |
-| `godot` | Godot 4.3+ project: `<id>.tscn` (Ground + Decor `TileMapLayer`, floor sprites, y-sorted `World` with object `Sprite2D`s and character `AnimatedSprite2D`s, `Collision` StaticBody2D with merged rectangles, `Spawns` Marker2Ds, Camera2D), `<id>_tileset.tres` (terrain set "match corners and sides" with 5 terrains + peering bits for every blob tile, so Godot's terrain painter keeps working), `character_patrol.gd`, `camera_pan.gd`, `test_map.gd`, `screenshot.gd`, 480×270 viewport, nearest filter |
+| `godot` | Godot 4.3+ project: `<id>.tscn` (Ground + Decor `TileMapLayer`, floor sprites, y-sorted `World` with object `Sprite2D`s and character `AnimatedSprite2D`s, `Collision` StaticBody2D with merged rectangles, `Spawns` Marker2Ds, Camera2D), `<id>_tileset.tres` (terrain set "match corners and sides" with 6 terrains + peering bits for every blob tile, so Godot's terrain painter keeps working), `character_patrol.gd`, `camera_pan.gd`, `test_map.gd`, `screenshot.gd`, 480×270 viewport, nearest filter |
 | `pixi` | `<id>.tilemap.json` (resolved atlas indices, objects, characters, collision, spawns), atlas + object + sheet PNGs, `easytilemap-pixi.js`, playable `index.html` (arrow keys / WASD walk "ton" around with collision) |
 
 **PixiJS v8**
@@ -159,7 +171,8 @@ Drop `pixi.min.js` next to `index.html` to run offline; otherwise it loads PixiJ
   (`easysprite-cli export --preset native`): 48×48 frames, rows front/right/back/left, feet on row 45. The
   sheet's `.json` gives the frame layout; without one Easy Tilemap assumes the native layout and detects the
   feet row. Side-view sheets load with a warning. The sample cast (`town_kid`, `town_vendor`, `town_monk`,
-  `town_farmer`, `town_student`, `town_elder`) is the same Thai town cast Easy Dialogue uses for portraits.
+  `town_farmer`, `town_student`, `town_elder`) is the same Thai town cast Easy Dialogue uses for portraits; `multicultural_village` adds Muslim neighbours
+  (`town_hijab_teacher`, `town_kopiah_boy`, `town_pak_cik`, `town_tadika_girl`, `town_roti_seller`, `town_fisher`).
 * **Spawns** in the demo (`player`, `market`, `temple`, `farm`, `elder_house`) are the targets of
   `@camera …` events in Easy Dialogue's `village_delivery.ezd`: on `event_fired("camera", ["temple"])`, move
   the camera to the `temple` Marker2D (Godot) or `map.spawn("temple")` (Pixi).
@@ -195,7 +208,9 @@ Ports: API / editor 8808 · MCP HTTP 8809 · Vite 5176.
 
 Seven small, local-first tools that share one look (teak, lantern gold, Kanit, 16/48px pixels), one
 workflow (CLI · web editor · MCP server) and the same targets (**Godot 4.3+** and **PixiJS v8**).
-ชุดเครื่องมือทำเกมพิกเซลสไตล์ไทย ใช้ร่วมกันได้ทั้งชุด
+ชุดเครื่องมือทำเกมพิกเซลสไตล์ไทย ใช้ร่วมกันได้ทั้งชุด  
+The samples share one multicultural southern Thai village: Buddhist temple, wooden kampung mosque and
+Chinese-Thai shrine on the same street. หมู่บ้านพหุวัฒนธรรม วัด มัสยิด ศาลเจ้า อยู่ร่วมกันในเมืองเดียว
 
 | | Tool | What it does | Repo |
 |:-:|---|---|---|
@@ -205,7 +220,7 @@ workflow (CLI · web editor · MCP server) and the same targets (**Godot 4.3+** 
 | <img src="docs/brand/logo-tilemap-96.png" width="40" alt="" /> | **Easy Tilemap** ← you are here | Top-down 16px maps: blob-47 autotiles, objects, collision, spawns. | [`easytilemap`](https://github.com/Saladin2020/easytilemap) |
 | <img src="docs/brand/logo-quest-96.png" width="40" alt="" /> | [**Easy Quest**](https://github.com/Saladin2020/easyquest) | Text `.ezq` quests: steps, flags, items, rewards, linked to dialogue. | [`easyquest`](https://github.com/Saladin2020/easyquest) |
 | <img src="docs/brand/logo-sfx-96.png" width="40" alt="" /> | [**Easy SFX**](https://github.com/Saladin2020/easysfx) | Deterministic 8-bit SFX and 4-channel chiptune loops, typing blips. | [`easysfx`](https://github.com/Saladin2020/easysfx) |
-| <img src="docs/brand/logo-ui-96.png" width="40" alt="" /> | [**Easy UI**](https://github.com/Saladin2020/easyui) | Nine-slice pixel UI kit: panels, bars, inventory, menus, 24 icons. | [`easyui`](https://github.com/Saladin2020/easyui) |
+| <img src="docs/brand/logo-ui-96.png" width="40" alt="" /> | [**Easy UI**](https://github.com/Saladin2020/easyui) | Nine-slice pixel UI kit: panels, bars, inventory, menus, 30 icons. | [`easyui`](https://github.com/Saladin2020/easyui) |
 
 ### Works with
 

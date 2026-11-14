@@ -40,12 +40,15 @@ Each layer is `height` strings of `width` characters. Missing `decor` / `collisi
 | `p` | rice paddy | นาข้าว | yes |
 | `w` | canal water | น้ำ / คลอง | **no** |
 | `s` | temple stone | ลานหิน | yes |
+| `b` | beach sand | หาดทราย | yes |
 
 Grass is the base: every other terrain is a **blob-47** overlay on grass. Each cell looks at its 8
 neighbours (`N=1 NE=2 E=4 SE=8 S=16 SW=32 W=64 NW=128`, a diagonal only counts when both adjacent sides
 match), giving 47 distinct tiles per terrain. Off-map neighbours count as the same terrain, so terrain
 touching the map edge runs off seamlessly. Centre tiles (mask 255) and grass get deterministic random
-variants per cell. Two different non-grass terrains side by side get a thin grass seam between them.
+variants per cell. Two different non-grass terrains side by side get a thin grass seam between them, except beach sand and
+water: sand treats water as its own kind, and water cells touching sand use a separate **shore** blob block
+(wet sand rim instead of grass), so a beach runs straight into the sea.
 
 **decor** — `.` or: `f` flowers · `t` grass tuft · `r` rocks · `l` lotus (on water) · `e` pebbles ·
 `u` stump · `n` reeds · `k` fence. Decor is drawn on its own TileMapLayer and never blocks.

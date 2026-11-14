@@ -1,0 +1,67 @@
+{
+  "format": "easysprite.native",
+  "view": "topdown",
+  "frameSize": 48,
+  "columns": 30,
+  "rows": 4,
+  "directions": [
+    "front",
+    "right",
+    "back",
+    "left"
+  ],
+  "frames": [
+    "idle",
+    "walk0",
+    "walk1",
+    "walk2",
+    "run0",
+    "run1",
+    "run2",
+    "run3",
+    "jump0",
+    "jump1",
+    "wave0",
+    "wave1",
+    "carry0",
+    "carry1",
+    "farm0",
+    "farm1",
+    "cheer0",
+    "cheer1",
+    "attack0",
+    "attack1",
+    "hurt0",
+    "hurt1",
+    "fall0",
+    "fall1",
+    "sleep0",
+    "sleep1",
+    "tired0",
+    "tired1",
+    "sit",
+    "crouch"
+  ],
+  "project": {
+    "id": "town_roti_seller",
+    "name": "Kak Nur (Roti Seller, Shawl Hijab)",
+    "view": "topdown",
+    "selections": {
+      "body": "body_light",
+      "face": "face_smile",
+      "hair_front": "hair_hijab_shawl_front",
+      "shirt": "shirt_apron",
+      "pants": "pants_sarong",
+      "shoes": "shoes_sandals",
+      "accessory": "acc_basket"
+    },
+    "colors": {
+      "body": "#e8c4a0",
+      "hair_front": "#b0485e",
+      "shirt": "#6b3f2a",
+      "pants": "#5b3a7a",
+      "shoes": "#8a6a44",
+      "accessory": "#c48a3a"
+    }
+  }
+}

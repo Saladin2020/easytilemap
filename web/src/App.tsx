@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { blobCoord, decorCoord, MARKER_ROW } from "../../src/shared/autotile";
+import { ATLAS_ROWS, blobCoord, decorCoord, MARKER_ROW } from "../../src/shared/autotile";
 import type { LoadedSheet, RenderAssets } from "../../src/shared/render";
 import type { RgbaImage } from "../../src/shared/raster";
 import { createMap } from "../../src/shared/map";
@@ -29,7 +29,7 @@ const PRESETS = [
 ] as const;
 const CATEGORY_LABEL: Record<ObjectCategory, string> = { building: "Buildings · อาคาร", nature: "Nature · ต้นไม้", prop: "Props · ของประดับ", floor: "Bridges & boats · สะพาน" };
 const ATLAS_W = 128;
-const ATLAS_H = 432;
+const ATLAS_H = ATLAS_ROWS * 16;
 
 function readLs(k: string): string {
   try {

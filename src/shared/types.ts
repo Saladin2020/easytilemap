@@ -4,16 +4,17 @@ export const FORMAT = "easytilemap/1" as const;
 export const TILE_SIZE = 16;
 
 /** Ground terrains. `grass` is the base; the others autotile (blob-47) over it. */
-export const TERRAINS = ["grass", "dirt", "paddy", "water", "stone"] as const;
+export const TERRAINS = ["grass", "dirt", "paddy", "water", "stone", "sand"] as const;
 export type Terrain = (typeof TERRAINS)[number];
-export const TERRAIN_CODE: Record<Terrain, string> = { grass: "g", dirt: "d", paddy: "p", water: "w", stone: "s" };
-export const CODE_TERRAIN: Record<string, Terrain> = { g: "grass", d: "dirt", p: "paddy", w: "water", s: "stone" };
+export const TERRAIN_CODE: Record<Terrain, string> = { grass: "g", dirt: "d", paddy: "p", water: "w", stone: "s", sand: "b" };
+export const CODE_TERRAIN: Record<string, Terrain> = { g: "grass", d: "dirt", p: "paddy", w: "water", s: "stone", b: "sand" };
 export const TERRAIN_LABELS: Record<Terrain, { en: string; th: string }> = {
   grass: { en: "Grass", th: "หญ้า" },
   dirt: { en: "Dirt path", th: "ทางดิน" },
   paddy: { en: "Rice paddy", th: "นาข้าว" },
   water: { en: "Canal water", th: "คลอง" },
   stone: { en: "Temple stone", th: "ลานหิน" },
+  sand: { en: "Beach sand", th: "หาดทราย" },
 };
 
 /** Decor tiles (one 16px tile each, drawn over the ground). `.` = empty. */

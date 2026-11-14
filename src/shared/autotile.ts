@@ -43,15 +43,18 @@ export function blobIndex(mask: number): number {
 /**
  * Atlas (8 columns of 16px tiles):
  * - row 0: grass variants 0–7
- * - rows 1–6 dirt, 7–12 paddy, 13–18 water, 19–24 stone: 47 blob tiles each (index → col i%8,
- *   row base + ⌊i/8⌋) and slot 47 = a second full-centre variant
- * - row 25: decor tiles in DECOR_CODES order
- * - row 26: col 0 collision marker (editor/debug), col 1 spawn marker
+ * - rows 1–6 dirt, 7–12 paddy, 13–18 water, 19–24 stone, 25–30 sand: 47 blob tiles each
+ *   (index → col i%8, row base + ⌊i/8⌋) and slot 47 = a second full-centre variant
+ * - rows 31–36 shore: water blob tiles whose open edges show beach sand instead of grass, used for
+ *   water cells next to sand (so a beach meets the sea without a grass seam)
+ * - row 37: decor tiles in DECOR_CODES order
+ * - row 38: col 0 collision marker (editor/debug), col 1 spawn marker
  */
 export const ATLAS_COLUMNS = 8;
 export const BLOB_ROWS = 6;
 export const OVERLAY_TERRAINS = TERRAINS.filter((t) => t !== "grass") as Exclude<Terrain, "grass">[];
-export const DECOR_ROW = 1 + OVERLAY_TERRAINS.length * BLOB_ROWS;
+export const SHORE_ROW = 1 + OVERLAY_TERRAINS.length * BLOB_ROWS;
+export const DECOR_ROW = SHORE_ROW + BLOB_ROWS;
 export const MARKER_ROW = DECOR_ROW + 1;
 export const ATLAS_ROWS = MARKER_ROW + 1;
 export const GRASS_VARIANTS = 8;
@@ -67,6 +70,11 @@ export function terrainBaseRow(t: Exclude<Terrain, "grass">): number {
 
 export function blobCoord(t: Exclude<Terrain, "grass">, index: number): AtlasCoord {
   return { col: index % ATLAS_COLUMNS, row: terrainBaseRow(t) + Math.floor(index / ATLAS_COLUMNS) };
+}
+
+/** Water-on-sand blob tile (same index rules as blobCoord). */
+export function shoreCoord(index: number): AtlasCoord {
+  return { col: index % ATLAS_COLUMNS, row: SHORE_ROW + Math.floor(index / ATLAS_COLUMNS) };
 }
 
 export function decorCoord(code: string): AtlasCoord | null {
@@ -101,7 +109,11 @@ function terrainAt(ground: readonly string[], x: number, y: number): Terrain {
 export function neighbourMask(ground: readonly string[], x: number, y: number): number {
   const t = terrainAt(ground, x, y);
   let m = 0;
-  const same = (dx: number, dy: number) => terrainAt(ground, x + dx, y + dy) === t;
+  // Beach sand runs right up to the waterline: for a sand cell, water counts as "same".
+  const same = (dx: number, dy: number) => {
+    const n = terrainAt(ground, x + dx, y + dy);
+    return n === t || (t === "sand" && n === "water");
+  };
   if (same(0, -1)) m |= N;
   if (same(1, -1)) m |= NE;
   if (same(1, 0)) m |= E;
@@ -119,6 +131,11 @@ export interface ResolvedCell {
   atlas: AtlasCoord;
 }
 
+function touchesSand(ground: readonly string[], x: number, y: number): boolean {
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && terrainAt(ground, x + dx, y + dy) === "sand") return true;
+  return false;
+}
+
 /** Atlas tile for one ground cell. */
 export function resolveGroundCell(ground: readonly string[], x: number, y: number): ResolvedCell {
   const terrain = terrainAt(ground, x, y);
@@ -127,6 +144,7 @@ export function resolveGroundCell(ground: readonly string[], x: number, y: numbe
   let index = blobIndex(mask);
   // Full centre tiles alternate with the spare variant in slot 47 for a less repetitive look.
   if (mask === 255 && cellHash(x, y, 3) < 0.35) index = 47;
+  if (terrain === "water" && touchesSand(ground, x, y)) return { terrain, mask, atlas: shoreCoord(index) };
   return { terrain, mask, atlas: blobCoord(terrain, index) };
 }
 
