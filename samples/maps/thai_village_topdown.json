@@ -1,0 +1,449 @@
+{
+  "format": "easytilemap/1",
+  "id": "thai_village_topdown",
+  "name": "หมู่บ้านริมคลอง · Thai village (top-down)",
+  "tileSize": 16,
+  "width": 40,
+  "height": 28,
+  "tileset": "thai_village",
+  "viewport": {
+    "width": 480,
+    "height": 270
+  },
+  "layers": {
+    "ground": [
+      "ggggggggggggddgggggggggggggwwwgggggggggg",
+      "ggsssssssssgddgggggggggggggwwwggpppppppg",
+      "ggsssssssssgddgggggggggggggwwwggpppppppg",
+      "ggsssssssssgddgggggggggggggwwwggpppppppg",
+      "ggsssssssssgddgggggggggggggwwwggpppppppg",
+      "ggsssssssssgddgggggggggggggwwwggpppppppg",
+      "ggsssssssssgddgggggggggggggwwwggpppppppg",
+      "ggsssssssssgddgggggggggggggwwwggpppppppg",
+      "ggsssssssssgddgggggggggggggwwwggpppppppg",
+      "ggsssssssssdddgggggggggggggwwwdddddddddd",
+      "ggsssssssssdddgggggggggggggwwwdddddddddd",
+      "ggggggggggggddgggggggggggggwwwdddddddddd",
+      "ggggggggggggddgggggggggggggwwwddpppppppg",
+      "dddddddddddddddddddddddddddwwwddpppppppg",
+      "dddddddddddddddddddddddddddwwwddpppppppg",
+      "ggggdgggggggddggggdggggggggwwwddpppppppg",
+      "ggggdgggggggddggggdggggggggwwwddpppppppg",
+      "ggggggggggggddggggdggggggggwwwddpppppppg",
+      "ggggggggggggddggggdggggggggwwwddpppppppg",
+      "ggggggggggggddgggggggggggggwwwdddddddddd",
+      "ggggggggggggddgggggggggggggwwwdddddddddd",
+      "ggggggggggggddgggggggggggggwwwggpppppppg",
+      "gggdddggggggddgggggggggggggwwwggpppppppg",
+      "gggdddggggggddgggggggggggggwwwggpppppppg",
+      "ggggggggggggddgggdddgggggggwwwggpppppppg",
+      "ggggggggggggddgggdddgggggggwwwggpppppppg",
+      "ggggggggggggddgggggggggggggwwwggpppppppg",
+      "ggggggggggggddgggggggggggggwwwgggggggggg"
+    ],
+    "decor": [
+      "r....f...tf..........................f..",
+      "...................t....................",
+      ".t..........................l...........",
+      "..........................n...n.........",
+      ".......................r................",
+      "................f.........nl..nf........",
+      ".............e............n...nr........",
+      "..............f...........n..l.........f",
+      "...........f.............tn............t",
+      "f...............t....t.........e........",
+      "..........................n.............",
+      "f........t....f...........n.............",
+      "...f...f..........t....................t",
+      "...e.e..............ee..e...............",
+      "....................e....e.....e........",
+      ".........ut.......e.....................",
+      "...............t.te.......n.............",
+      "..........................n..l.........t",
+      "............e..........r................",
+      ".......t.ff......ff.....................",
+      ".......f.........f...r..................",
+      "..............................n.........",
+      "...e....ff....................n.........",
+      "......kk................................",
+      ".....................fr.ttn.............",
+      "................f...f.....n.l...........",
+      "..........f.........kkk....l.........u..",
+      "....r.f.........t.f...........n......r.t"
+    ],
+    "collision": [
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................",
+      "........................................"
+    ]
+  },
+  "objects": [
+    {
+      "kind": "temple",
+      "x": 3,
+      "y": 1,
+      "name": "Temple"
+    },
+    {
+      "kind": "sala",
+      "x": 8,
+      "y": 6,
+      "name": "Sala"
+    },
+    {
+      "kind": "spirit_house",
+      "x": 2,
+      "y": 8
+    },
+    {
+      "kind": "market_stall",
+      "x": 15,
+      "y": 10,
+      "name": "StallMango"
+    },
+    {
+      "kind": "market_stall",
+      "x": 19,
+      "y": 10,
+      "name": "StallVeg"
+    },
+    {
+      "kind": "market_stall",
+      "x": 23,
+      "y": 10,
+      "name": "StallSweets"
+    },
+    {
+      "kind": "house_wood",
+      "x": 1,
+      "y": 17,
+      "name": "HouseTon"
+    },
+    {
+      "kind": "house_small",
+      "x": 8,
+      "y": 18,
+      "name": "HouseMee"
+    },
+    {
+      "kind": "house_wood",
+      "x": 16,
+      "y": 19,
+      "name": "HouseElder"
+    },
+    {
+      "kind": "house_small",
+      "x": 22,
+      "y": 20
+    },
+    {
+      "kind": "bridge_h",
+      "x": 27,
+      "y": 13
+    },
+    {
+      "kind": "bridge_h",
+      "x": 27,
+      "y": 14
+    },
+    {
+      "kind": "bridge_h",
+      "x": 27,
+      "y": 9
+    },
+    {
+      "kind": "boat",
+      "x": 27,
+      "y": 21
+    },
+    {
+      "kind": "tree_mango",
+      "x": 15,
+      "y": 1
+    },
+    {
+      "kind": "tree_mango",
+      "x": 20,
+      "y": 2
+    },
+    {
+      "kind": "tree_mango",
+      "x": 24,
+      "y": 4
+    },
+    {
+      "kind": "tree_mango",
+      "x": 17,
+      "y": 6
+    },
+    {
+      "kind": "tree_mango",
+      "x": 22,
+      "y": 15
+    },
+    {
+      "kind": "tree_mango",
+      "x": 7,
+      "y": 25
+    },
+    {
+      "kind": "tree_mango",
+      "x": 24,
+      "y": 25
+    },
+    {
+      "kind": "tree_mango",
+      "x": 0,
+      "y": 10
+    },
+    {
+      "kind": "tree_mango",
+      "x": 14,
+      "y": 22
+    },
+    {
+      "kind": "palm",
+      "x": 25,
+      "y": 0
+    },
+    {
+      "kind": "palm",
+      "x": 25,
+      "y": 7
+    },
+    {
+      "kind": "palm",
+      "x": 25,
+      "y": 16
+    },
+    {
+      "kind": "palm",
+      "x": 25,
+      "y": 23
+    },
+    {
+      "kind": "palm",
+      "x": 30,
+      "y": 0
+    },
+    {
+      "kind": "palm",
+      "x": 30,
+      "y": 23
+    },
+    {
+      "kind": "banana",
+      "x": 6,
+      "y": 17
+    },
+    {
+      "kind": "banana",
+      "x": 11,
+      "y": 21
+    },
+    {
+      "kind": "banana",
+      "x": 20,
+      "y": 21
+    },
+    {
+      "kind": "banana",
+      "x": 1,
+      "y": 24
+    },
+    {
+      "kind": "banana",
+      "x": 26,
+      "y": 19
+    },
+    {
+      "kind": "banana",
+      "x": 15,
+      "y": 16
+    },
+    {
+      "kind": "bamboo",
+      "x": 0,
+      "y": 1
+    },
+    {
+      "kind": "bamboo",
+      "x": 0,
+      "y": 3
+    },
+    {
+      "kind": "bamboo",
+      "x": 0,
+      "y": 5
+    },
+    {
+      "kind": "bamboo",
+      "x": 11,
+      "y": 2
+    },
+    {
+      "kind": "bamboo",
+      "x": 11,
+      "y": 4
+    },
+    {
+      "kind": "haystack",
+      "x": 36,
+      "y": 9
+    },
+    {
+      "kind": "haystack",
+      "x": 30,
+      "y": 25
+    },
+    {
+      "kind": "water_jar",
+      "x": 6,
+      "y": 21
+    },
+    {
+      "kind": "water_jar",
+      "x": 21,
+      "y": 23
+    },
+    {
+      "kind": "water_jar",
+      "x": 11,
+      "y": 20
+    },
+    {
+      "kind": "lantern_post",
+      "x": 14,
+      "y": 11
+    },
+    {
+      "kind": "lantern_post",
+      "x": 26,
+      "y": 11
+    },
+    {
+      "kind": "lantern_post",
+      "x": 11,
+      "y": 11
+    }
+  ],
+  "spawns": [
+    {
+      "name": "player",
+      "x": 13,
+      "y": 15,
+      "facing": "front"
+    },
+    {
+      "name": "market",
+      "x": 17,
+      "y": 13,
+      "facing": "back"
+    },
+    {
+      "name": "temple",
+      "x": 6,
+      "y": 9,
+      "facing": "back"
+    },
+    {
+      "name": "farm",
+      "x": 34,
+      "y": 10,
+      "facing": "right"
+    },
+    {
+      "name": "elder_house",
+      "x": 18,
+      "y": 25,
+      "facing": "back"
+    }
+  ],
+  "characters": [
+    {
+      "sheet": "characters/town_kid.png",
+      "x": 13,
+      "y": 15,
+      "name": "ton",
+      "facing": "front"
+    },
+    {
+      "sheet": "characters/town_vendor.png",
+      "x": 16,
+      "y": 13,
+      "name": "pa_daeng",
+      "facing": "front"
+    },
+    {
+      "sheet": "characters/town_monk.png",
+      "x": 5,
+      "y": 10,
+      "name": "luang_phi",
+      "facing": "right",
+      "anim": "walk",
+      "patrol": {
+        "path": [
+          [3, 10],
+          [9, 10]
+        ],
+        "speed": 16
+      }
+    },
+    {
+      "sheet": "characters/town_farmer.png",
+      "x": 35,
+      "y": 5,
+      "name": "lung_mee",
+      "facing": "front"
+    },
+    {
+      "sheet": "characters/town_student.png",
+      "x": 21,
+      "y": 14,
+      "name": "phi_fon",
+      "facing": "left",
+      "anim": "walk",
+      "patrol": {
+        "path": [
+          [24, 14],
+          [15, 14],
+          [15, 15],
+          [24, 15]
+        ],
+        "speed": 22
+      }
+    },
+    {
+      "sheet": "characters/town_elder.png",
+      "x": 19,
+      "y": 24,
+      "name": "ta_poem",
+      "facing": "front"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "format": "easysprite.native",
+  "view": "topdown",
+  "frameSize": 48,
+  "columns": 30,
+  "rows": 4,
+  "directions": [
+    "front",
+    "right",
+    "back",
+    "left"
+  ],
+  "frames": [
+    "idle",
+    "walk0",
+    "walk1",
+    "walk2",
+    "run0",
+    "run1",
+    "run2",
+    "run3",
+    "jump0",
+    "jump1",
+    "wave0",
+    "wave1",
+    "carry0",
+    "carry1",
+    "farm0",
+    "farm1",
+    "cheer0",
+    "cheer1",
+    "attack0",
+    "attack1",
+    "hurt0",
+    "hurt1",
+    "fall0",
+    "fall1",
+    "sleep0",
+    "sleep1",
+    "tired0",
+    "tired1",
+    "sit",
+    "crouch"
+  ],
+  "project": {
+    "id": "town_monk",
+    "name": "Monk",
+    "view": "topdown",
+    "selections": {
+      "body": "body_deep",
+      "pants": "pants_sabong",
+      "shoes": "shoes_sandals",
+      "shirt": "shirt_monk_robe",
+      "face": "face_smile",
+      "hair_front": "hair_shaved_front",
+      "hair_back": null
+    },
+    "colors": {
+      "body": "#8a5a3c",
+      "shoes": "#8a6a44",
+      "hair_front": "#3a3028",
+      "hair_back": "#3a3028"
+    }
+  }
+}
