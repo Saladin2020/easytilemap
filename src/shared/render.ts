@@ -8,6 +8,7 @@ import { collisionGrid } from "./map.js";
 import { OBJECT_BY_KIND } from "./objects.js";
 import { blit, createImage, fillRect, type RgbaImage } from "./raster.js";
 import type { MapDoc } from "./types.js";
+import { addGlow, nightAssets, nightGlow } from "./night.js";
 
 export interface LoadedSheet {
   img: RgbaImage;
@@ -30,6 +31,8 @@ export interface RenderOptions {
   characters?: boolean;
   /** Crop in px (before scaling). */
   crop?: { x: number; y: number; w: number; h: number };
+  /** Night look: moonlit grade, lit windows and lamps, glow around towns (see night.ts). */
+  night?: boolean;
   /** Hide whole layers in the editor. */
   hide?: Partial<Record<"ground" | "decor" | "objects", boolean>>;
 }
@@ -144,7 +147,8 @@ export function scaleImage(img: RgbaImage, s: number): RgbaImage {
 }
 
 export function renderMap(doc: MapDoc, assets: RenderAssets, opts: RenderOptions = {}): RgbaImage {
-  let img = renderMapRaw(doc, assets, opts);
+  let img = renderMapRaw(doc, opts.night ? nightAssets(assets) : assets, opts);
+  if (opts.night && !opts.hide?.objects) addGlow(img, nightGlow(doc));
   if (opts.crop) img = cropImage(img, opts.crop.x, opts.crop.y, opts.crop.w, opts.crop.h);
   const s = Math.max(1, Math.min(8, Math.round(opts.scale ?? 1)));
   return scaleImage(img, s);

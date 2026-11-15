@@ -18,7 +18,7 @@ const body = (r) => JSON.parse(r.content?.[0]?.text ?? "{}");
 async function exercise(client, label) {
   const tools = (await client.listTools()).tools.map((t) => t.name);
   console.log(`[${label}] tools (${tools.length}):`, tools.join(", "));
-  if (tools.length !== 7) fail(`${label}: expected 7 tools`);
+  if (tools.length !== 9) fail(`${label}: expected 9 tools`);
   const info = body(await client.callTool({ name: "workspace_info", arguments: {} }));
   if (!info.maps?.length) fail(`${label}: workspace_info`);
   console.log(`[${label}] maps:`, info.maps?.map((m) => m.id).join(", "), "· characters", info.characters?.length, "· objects", info.objects?.length);
@@ -34,6 +34,18 @@ async function exercise(client, label) {
   const img = prev.content?.find((c) => c.type === "image");
   console.log(`[${label}] render image bytes:`, img ? Buffer.from(img.data, "base64").length : 0);
   if (!img) fail(`${label}: render`);
+  const gen = body(await client.callTool({ name: "generate_overworld", arguments: { seed: 7, id: `world_${label}`, force: true } }));
+  console.log(`[${label}] generate_overworld saved=${gen.saved} towns=${gen.towns?.length} routes=${gen.routes?.length} tunnels=${gen.tunnelTiles}`);
+  if (!gen.saved || !(gen.tunnelTiles > 0)) fail(`${label}: generate_overworld`);
+  const chk = body(await client.callTool({ name: "check_map", arguments: { id: `world_${label}` } }));
+  console.log(`[${label}] check_map ok=${chk.ok} warnings=${chk.warnings?.length}`);
+  if (!chk.ok) fail(`${label}: check_map`);
+  const links = body(await client.callTool({ name: "check_map", arguments: { id: `world_${label}`, scenes: "maps" } }));
+  console.log(`[${label}] check_map scenes=maps → ${links.errors?.length} missing town scenes (expected ${gen.towns?.length})`);
+  if (links.errors?.length !== gen.towns?.length) fail(`${label}: check_map scenes`);
+  const ex = body(await client.callTool({ name: "export_map", arguments: { id: `world_${label}`, preset: "pixi", night: true } }));
+  console.log(`[${label}] export overworld pixi: files=${ex.files} warnings=${ex.warnings?.length}`);
+  if (!(ex.files > 10)) fail(`${label}: export overworld`);
 }
 
 // stdio

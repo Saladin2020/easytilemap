@@ -56,7 +56,7 @@ describe("city street tiles (sidewalk / road / curb)", () => {
     expect(terrainBaseRow("road")).toBe(45);
     expect(CURB_ROW).toBe(51);
     expect(CITY_DECOR_ROW).toBe(57);
-    expect(ATLAS_ROWS).toBe(58);
+    expect(ATLAS_ROWS).toBe(104); // + overworld rows 58..78, tunnel portals 79, forest / mountain variants 80..103 appended below
     expect(atlas.height).toBe(ATLAS_ROWS * T);
     expect(TERRAINS.slice(0, 6)).toEqual(["grass", "dirt", "paddy", "water", "stone", "sand"]);
   });

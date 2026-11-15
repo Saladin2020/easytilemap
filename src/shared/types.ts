@@ -3,11 +3,32 @@
 export const FORMAT = "easytilemap/1" as const;
 export const TILE_SIZE = 16;
 
-/** Ground terrains. `grass` is the base; the others autotile (blob-47) over it. */
-export const TERRAINS = ["grass", "dirt", "paddy", "water", "stone", "sand", "sidewalk", "road"] as const;
+/**
+ * Ground terrains. `grass` is the base; the blob terrains autotile (blob-47) over it. The overworld
+ * line terrains (rail, level crossing, rail / road bridge, station) join along their 4 sides instead
+ * (see LINE_TERRAINS and autotile.ts).
+ */
+export const TERRAINS = [
+  "grass", "dirt", "paddy", "water", "stone", "sand", "sidewalk", "road",
+  // overworld (world map) set
+  "forest", "mountain", "field",
+  "rail", "crossing", "rail_bridge", "road_bridge", "station",
+  // appended later: never reorder (codes and terrain ids are part of saved maps and Godot TileSets)
+  "tunnel",
+] as const;
 export type Terrain = (typeof TERRAINS)[number];
-export const TERRAIN_CODE: Record<Terrain, string> = { grass: "g", dirt: "d", paddy: "p", water: "w", stone: "s", sand: "b", sidewalk: "v", road: "a" };
-export const CODE_TERRAIN: Record<string, Terrain> = { g: "grass", d: "dirt", p: "paddy", w: "water", s: "stone", b: "sand", v: "sidewalk", a: "road" };
+export const TERRAIN_CODE: Record<Terrain, string> = {
+  grass: "g", dirt: "d", paddy: "p", water: "w", stone: "s", sand: "b", sidewalk: "v", road: "a",
+  forest: "F", mountain: "M", field: "C",
+  rail: "T", crossing: "X", rail_bridge: "H", road_bridge: "J", station: "Z",
+  tunnel: "U",
+};
+export const CODE_TERRAIN: Record<string, Terrain> = Object.fromEntries(Object.entries(TERRAIN_CODE).map(([t, c]) => [c, t as Terrain]));
+/** Line terrains: rails, crossings, bridges, stations and tunnels, autotiled from their N/E/S/W neighbours. */
+export const LINE_TERRAINS = ["rail", "crossing", "rail_bridge", "road_bridge", "station", "tunnel"] as const satisfies readonly Terrain[];
+export type LineTerrain = (typeof LINE_TERRAINS)[number];
+/** Terrains that block walking (water, mountains, rail tunnels: only the train goes through). Bridges and everything else are walkable. */
+export const BLOCKING_CODES = new Set(["w", "M", "U"]);
 export const TERRAIN_LABELS: Record<Terrain, { en: string; th: string }> = {
   grass: { en: "Grass", th: "หญ้า" },
   dirt: { en: "Dirt path", th: "ทางดิน" },
@@ -17,6 +38,15 @@ export const TERRAIN_LABELS: Record<Terrain, { en: string; th: string }> = {
   sand: { en: "Beach sand", th: "หาดทราย" },
   sidewalk: { en: "Sidewalk paving", th: "ทางเท้า" },
   road: { en: "Asphalt road", th: "ถนนลาดยาง" },
+  forest: { en: "Forest", th: "ป่า" },
+  mountain: { en: "Mountains", th: "ภูเขา" },
+  field: { en: "Farm field", th: "ไร่นา" },
+  rail: { en: "Railway track", th: "ทางรถไฟ" },
+  crossing: { en: "Level crossing (rail × road)", th: "จุดตัดทางรถไฟ" },
+  rail_bridge: { en: "Railway bridge", th: "สะพานรถไฟ" },
+  road_bridge: { en: "Road bridge", th: "สะพานถนน" },
+  station: { en: "Railway station platform", th: "ชานชาลาสถานี" },
+  tunnel: { en: "Railway tunnel (through mountains)", th: "อุโมงค์รถไฟ" },
 };
 
 /** Decor tiles (one 16px tile each, drawn over the ground). `.` = empty. */
@@ -119,6 +149,69 @@ export interface MapDoc {
   objects: MapObject[];
   spawns: Spawn[];
   characters: MapCharacter[];
+  /** Optional world-map data: regions, towns (with Easy Scene side-view links) and road / rail routes. */
+  overworld?: OverworldData;
+}
+
+// ---------------------------------------------------------------- overworld
+
+/** A name in Thai, English and (optionally) Malay. */
+export interface LocalName {
+  th: string;
+  en: string;
+  ms?: string;
+}
+
+export const TOWN_KINDS = ["thai_town", "malay_kampung", "chinese_town", "rural_village", "brick_city"] as const;
+export type TownKind = (typeof TOWN_KINDS)[number];
+export const CULTURES = ["thai", "malay", "chinese", "rural", "mixed"] as const;
+export type Culture = (typeof CULTURES)[number];
+export const ROUTE_KINDS = ["road", "rail"] as const;
+export type RouteKind = (typeof ROUTE_KINDS)[number];
+
+export interface OverworldRegion {
+  id: string;
+  name: LocalName;
+  culture?: Culture;
+  /** Map-overlay colour (#rrggbb). */
+  color?: string;
+}
+
+export interface OverworldTown {
+  id: string;
+  name: LocalName;
+  /** Region (cluster) id. */
+  region: string;
+  kind: TownKind;
+  /** Name of the town marker object in `objects[]` (optional). */
+  object?: string;
+  /** Walkable tile the player steps on to enter the town. */
+  entrance: [number, number];
+  /** Easy Scene side-view scene id loaded on entering. */
+  scene: string;
+  /** Station platform tile (`Z`) when the town is on the railway. */
+  station?: [number, number];
+  /** Seed for the generated Easy Scene street (optional). */
+  seed?: number;
+}
+
+export interface OverworldRoute {
+  id: string;
+  kind: RouteKind;
+  from: string;
+  to: string;
+  /** Tile path (4-connected), entrance → entrance for roads, station → station for rail. */
+  path?: Array<[number, number]>;
+}
+
+export interface OverworldData {
+  regions: OverworldRegion[];
+  towns: OverworldTown[];
+  routes: OverworldRoute[];
+  /** Town id the player starts at (default: the first town). */
+  start?: string;
+  /** Generator settings, so the map can be re-made. */
+  generator?: { seed: number; clusters: number; version: number };
 }
 
 export interface Diagnostic {

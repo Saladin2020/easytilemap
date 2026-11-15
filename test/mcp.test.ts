@@ -25,10 +25,10 @@ afterAll(async () => {
 const body = (res: unknown) => JSON.parse(((res as { content: Array<{ text: string }> }).content[0]!).text);
 
 describe("MCP server", () => {
-  it("lists the seven tools", async () => {
+  it("lists the nine tools", async () => {
     const tools = (await client.listTools()).tools.map((t) => t.name).sort();
     expect(tools).toEqual([...MCP_TOOL_NAMES].sort());
-    expect(tools).toHaveLength(7);
+    expect(tools).toHaveLength(9);
   });
 
   it("creates, edits, renders and exports a map end to end", async () => {
@@ -72,6 +72,35 @@ describe("MCP server", () => {
     const escape = await client.callTool({ name: "export_map", arguments: { id: "mcp_pond", preset: "png", out: "../../outside" } });
     expect((escape as { isError?: boolean }).isError).toBe(true);
   });
+});
+
+describe("MCP overworld tools", () => {
+  it("generates an overworld, checks scene links and exports it with night", async () => {
+    const gen = body(await client.callTool({ name: "generate_overworld", arguments: { seed: 7, id: "mcp_world" } }));
+    expect(gen.saved).toBe(true);
+    expect(gen.errors).toEqual([]);
+    expect(gen.towns.length).toBeGreaterThan(4);
+    expect(gen.tunnelTiles).toBeGreaterThan(0);
+    const again = await client.callTool({ name: "generate_overworld", arguments: { seed: 7, id: "mcp_world" } });
+    expect((again as { isError?: boolean }).isError).toBe(true);
+    const ok = body(await client.callTool({ name: "check_map", arguments: { id: "mcp_world" } }));
+    expect(ok.ok).toBe(true);
+    // scene links: an empty scenes folder → one error per town
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(`${root}/scenes-empty`, { recursive: true });
+    const links = body(await client.callTool({ name: "check_map", arguments: { id: "mcp_world", scenes: "scenes-empty" } }));
+    expect(links.ok).toBe(false);
+    expect(links.errors.length).toBe(gen.towns.length);
+    const outside = await client.callTool({ name: "check_map", arguments: { id: "mcp_world", scenes: "../../" } });
+    expect((outside as { isError?: boolean }).isError).toBe(true);
+    const exp = body(await client.callTool({ name: "export_map", arguments: { id: "mcp_world", preset: "png" } }));
+    await access(`${exp.dirs[0]}/mcp_world_night.png`);
+    const px = body(await client.callTool({ name: "export_map", arguments: { id: "mcp_world", preset: "pixi", night: true } }));
+    await access(`${px.dirs[0]}/overworld/overworld.json`);
+    await access(`${px.dirs[0]}/easytilemap-overworld.js`);
+    const night = await client.callTool({ name: "render_map", arguments: { id: "mcp_world", night: true, crop: { x: 0, y: 0, w: 64, h: 64 } } });
+    expect((night.content as Array<{ type: string }>).some((c) => c.type === "image")).toBe(true);
+  }, 120_000);
 });
 
 describe("HTTP API", () => {

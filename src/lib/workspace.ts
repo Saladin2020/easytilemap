@@ -206,7 +206,18 @@ export function serializeMap(doc: MapDoc): string {
 /** Atlas: the workspace's tilesets/<id>.png when present (repainted art), else the generated sample. */
 export async function loadAtlas(root: string, tileset = SAMPLE_TILESET_ID): Promise<RgbaImage> {
   const f = path.join(dirs(root).tilesets, `${tileset}.png`);
-  if (existsSync(f)) return readPng(f);
+  if (existsSync(f)) {
+    const img = await readPng(f);
+    // An atlas written before newer rows were appended (city, overworld): keep the repainted rows and
+    // take the missing ones from the generated sample, so new terrains still draw.
+    const full = generateAtlas();
+    if (img.width === full.width && img.height < full.height) {
+      const out = { width: full.width, height: full.height, data: new Uint8Array(full.data) } as RgbaImage;
+      out.data.set(img.data.subarray(0, img.width * img.height * 4), 0);
+      return out;
+    }
+    return img;
+  }
   if (tileset !== SAMPLE_TILESET_ID) throw new Error(`Tileset "${tileset}" not found in ${dirs(root).tilesets}`);
   return generateAtlas();
 }

@@ -31,7 +31,7 @@ Cursor `~/.cursor/mcp.json`:
 }
 ```
 
-## Tools (7)
+## Tools (9)
 
 | Tool | What it does |
 |---|---|
@@ -40,8 +40,10 @@ Cursor `~/.cursor/mcp.json`:
 | `get_map` | errors + warnings, stats, ASCII overview (`O` object, `=` bridge/boat, `S` spawn, `@` character), objects, spawns, characters; `includeJson` for the full document |
 | `write_map` | validate and save a whole `easytilemap/1` document, or create a blank `width`×`height` map; refuses to save with errors; `dryRun` only validates |
 | `edit_map` | apply ops in order and save: `fill` (rect), `paint` (cells), `line` / `path` (with width) on `ground` / `decor` / `collision`, `place` / `remove_object`, `spawn` / `remove_spawn`, `character` / `remove_character`, `resize`; returns the new ASCII |
-| `render_map` | PNG (scale 1–4, optional `crop`, `collision` / `grid` / `spawns` overlays) returned inline and saved in `exports/previews/` |
-| `export_map` | `png` · `godot` · `pixi` · `all` into `exports/<id>-<preset>/` |
+| `render_map` | PNG (scale 1–4, optional `crop`, `collision` / `grid` / `spawns` overlays, `night`) returned inline and saved in `exports/previews/` |
+| `export_map` | `png` · `godot` · `pixi` · `all` into `exports/<id>-<preset>/`; overworld maps: `townScenes` (folder of Easy Scene `<scene>-godot/` / `<scene>-pixi/` exports), `townPlayer` (side-view sheet), `night` |
+| `generate_overworld` | seeded world map: town clusters (Thai / Malay kampung / Chinese-Thai / rural), roads, railway with stations and tunnels; returns regions, towns (entrance, station, scene id), routes, tunnel tile count. Same seed → same map; `force` overwrites |
+| `check_map` | validation errors / warnings / stats; `scenes` (workspace folder: Easy Scene workspace, scenes folder or exports) also checks every overworld town links to an existing scene; `strict` |
 
 ## Recommended flow
 
@@ -49,6 +51,9 @@ Cursor `~/.cursor/mcp.json`:
 workspace_info → write_map {id, width, height} → edit_map (terrain first: fill/line, then place objects,
 spawn, character) → get_map (read the ASCII + warnings) → render_map (look at it) → export_map
 ```
+
+World map: `generate_overworld {seed}` → Easy Scene MCP `towns_from_overworld {map: "maps/<id>.json", export:
+"godot,pixi"}` → `check_map {id, scenes}` → `export_map {id, preset: "godot" | "pixi", townScenes, townPlayer}`.
 
 Example `edit_map` arguments:
 

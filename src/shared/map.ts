@@ -3,7 +3,9 @@
  * Pure: shared by the CLI, API, MCP server, exporters and the web editor.
  */
 import { OBJECT_BY_KIND, OBJECT_KINDS } from "./objects.js";
+import { checkOverworld, normalizeOverworld } from "./overworld.js";
 import {
+  BLOCKING_CODES,
   CHARACTER_ANIMS,
   CODE_TERRAIN,
   DECOR_CODES,
@@ -188,6 +190,8 @@ export function validateMap(input: unknown, opts: { id?: string } = {}): Validat
   const { characters, warnings: cw } = normalizeCharacters(Array.isArray(m.characters) ? m.characters : []);
   cw.forEach((w) => diags.push({ severity: "warning", message: w, path: "characters" }));
 
+  const overworld = normalizeOverworld(m.overworld, diags);
+
   const name = typeof m.name === "string" && m.name.trim() ? m.name.trim() : id || "map";
   const vp = m.viewport && finite(m.viewport.width) && finite(m.viewport.height) ? { width: Math.round(m.viewport.width), height: Math.round(m.viewport.height) } : { ...DEFAULT_VIEWPORT };
   const doc: MapDoc = {
@@ -203,10 +207,12 @@ export function validateMap(input: unknown, opts: { id?: string } = {}): Validat
     objects,
     spawns,
     characters,
+    ...(overworld ? { overworld } : {}),
   };
 
   // semantic warnings
   const blocked = collisionGrid(doc);
+  checkOverworld(doc, blocked, diags);
   for (const s of spawns) {
     if (inMap(s.x, s.y) && blocked[s.y]![s.x]) diags.push({ severity: "warning", message: `Spawn "${s.name}" is on a blocked tile (${s.x},${s.y})`, path: "spawns", x: s.x, y: s.y });
   }
@@ -262,7 +268,7 @@ export function normalizeCharacters(list: readonly unknown[]): { characters: Map
  * painted `o` force a cell open. Row-major booleans.
  */
 export function collisionGrid(doc: Pick<MapDoc, "width" | "height" | "layers" | "objects">): boolean[][] {
-  const g: boolean[][] = Array.from({ length: doc.height }, (_, y) => Array.from({ length: doc.width }, (_, x) => doc.layers.ground[y]?.[x] === "w"));
+  const g: boolean[][] = Array.from({ length: doc.height }, (_, y) => Array.from({ length: doc.width }, (_, x) => BLOCKING_CODES.has(doc.layers.ground[y]?.[x] ?? "")));
   const mark = (x: number, y: number, v: boolean) => {
     if (y >= 0 && y < doc.height && x >= 0 && x < doc.width) g[y]![x] = v;
   };
