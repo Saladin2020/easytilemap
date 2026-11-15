@@ -21,9 +21,12 @@ import { renderMap } from "../shared/render.js";
 import { DECOR_LABELS, FACINGS, LAYER_NAMES, TERRAINS, TERRAIN_CODE } from "../shared/types.js";
 import { EXPORT_PRESETS, exportMap } from "../lib/export.js";
 import { encodePng } from "../lib/png.js";
-import { dirs, loadAssets, mapPath, readMap, resolveWorkspace, saveMap, listMaps, workspaceSummary } from "../lib/workspace.js";
+import { sceneIdsIn } from "../lib/sceneLinks.js";
+import { checkSceneLinks } from "../shared/overworld.js";
+import { generateOverworld } from "../shared/overworldGen.js";
+import { dirs, loadAssets, mapPath, readMap, resolveInside, resolveWorkspace, saveMap, listMaps, workspaceSummary } from "../lib/workspace.js";
 
-export const MCP_TOOL_NAMES = ["workspace_info", "list_maps", "get_map", "write_map", "edit_map", "render_map", "export_map"] as const;
+export const MCP_TOOL_NAMES = ["workspace_info", "list_maps", "get_map", "write_map", "edit_map", "render_map", "export_map", "generate_overworld", "check_map"] as const;
 
 const IdSchema = z.string().regex(/^[a-z0-9_-]+$/, "Use a-z, 0-9, _ or -");
 
@@ -187,14 +190,15 @@ export function createEasyTilemapMcp(workspaceRoot: string): McpServer {
         grid: z.boolean().optional(),
         spawns: z.boolean().optional(),
         crop: z.object({ x: z.number().int(), y: z.number().int(), w: z.number().int().min(1), h: z.number().int().min(1) }).optional().describe("Map pixels"),
+        night: z.boolean().optional().describe("Night render: moonlit grade, lit town and station windows"),
       },
     },
-    async ({ id, scale, collision, grid, spawns, crop }) => {
+    async ({ id, scale, collision, grid, spawns, crop, night }) => {
       try {
         const r = await readMap(root, id);
         if (!r.doc) return err(`Map has errors:\n${r.errors.map((e) => e.message).join("\n")}`);
         const assets = await loadAssets(root, r.doc);
-        const buf = encodePng(renderMap(r.doc, assets, { scale: scale ?? 1, collision, grid, spawns, crop }));
+        const buf = encodePng(renderMap(r.doc, assets, { scale: scale ?? 1, collision, grid, spawns, crop, night }));
         const out = path.join(dirs(root).exports, "previews", `${id}.png`);
         await mkdir(path.dirname(out), { recursive: true });
         await writeFile(out, buf);
@@ -214,14 +218,91 @@ export function createEasyTilemapMcp(workspaceRoot: string): McpServer {
     "export_map",
     {
       title: "Export map",
-      description: "Export to png, godot (Godot 4.3+ project: TileMapLayer + terrain TileSet, AnimatedSprite2D characters, StaticBody2D collision, Marker2D spawns), pixi (PixiJS v8 bundle + loader + playable demo) or all.",
-      inputSchema: { id: IdSchema, preset: z.enum(EXPORT_PRESETS).optional().describe("Default all"), out: z.string().optional().describe("Workspace-relative output folder") },
+      description:
+        "Export to png, godot (Godot 4.3+ project: TileMapLayer + terrain TileSet, AnimatedSprite2D characters, StaticBody2D collision, Marker2D spawns), pixi (PixiJS v8 bundle + loader + playable demo) or all. Overworld maps also get the playable game (town side views, trains, tunnels, day/night) in godot and pixi, and a _night.png in png.",
+      inputSchema: {
+        id: IdSchema,
+        preset: z.enum(EXPORT_PRESETS).optional().describe("Default all"),
+        out: z.string().optional().describe("Workspace-relative output folder"),
+        townScenes: z.string().optional().describe("Overworld: workspace-relative folder of Easy Scene exports (<scene>-godot/, <scene>-pixi/) used as the towns' side views"),
+        townPlayer: z.string().optional().describe("Overworld: workspace-relative Easy Sprite side-view sheet for the player inside towns"),
+        night: z.boolean().optional().describe("Start overworld games at night; png preset also writes <id>_night.png"),
+      },
     },
-    async ({ id, preset, out }) => {
+    async ({ id, preset, out, townScenes, townPlayer, night }) => {
       try {
         if (!existsSync(mapPath(root, id))) return err(`Map "${id}" not found`);
-        const res = await exportMap(root, { id, preset, out });
+        const inside = (p?: string) => (p ? resolveInside(root, p) : undefined);
+        const res = await exportMap(root, { id, preset, out, overworld: { townScenes: inside(townScenes), townPlayer: inside(townPlayer), night } });
         return text({ dirs: res.dirs, files: res.files.length, warnings: res.warnings });
+      } catch (e) {
+        return err(msg(e));
+      }
+    },
+  );
+
+  server.registerTool(
+    "generate_overworld",
+    {
+      title: "Generate overworld",
+      description:
+        "Generate a seeded JRPG world map (maps/<id>.json): town clusters (regions) of Thai, Malay-kampung, Chinese-Thai and rural towns joined by roads and a railway with stations; the rail tunnels through mountains. Same seed → same map. Then run Easy Scene `towns --from-overworld` for the side-view streets.",
+      inputSchema: {
+        seed: z.number().int().describe("Any integer"),
+        id: IdSchema.optional().describe("Default overworld_<seed>"),
+        name: z.string().optional(),
+        width: z.number().int().min(48).max(256).optional().describe("Tiles, default 96"),
+        height: z.number().int().min(36).max(256).optional().describe("Tiles, default 64"),
+        clusters: z.number().int().min(2).max(8).optional().describe("Town clusters, default 4"),
+        player: z.string().optional().describe("Top-down player sheet (default characters/town_kopiah_boy.png when present)"),
+        force: z.boolean().optional().describe("Overwrite an existing map"),
+      },
+    },
+    async ({ seed, id, name, width, height, clusters, player, force }) => {
+      try {
+        const mapId = id ?? `overworld_${seed >>> 0}`;
+        if (existsSync(mapPath(root, mapId)) && !force) return err(`Map "${mapId}" exists (pass force: true)`);
+        const defaultPlayer = "characters/town_kopiah_boy.png";
+        const doc = generateOverworld({ seed, id: mapId, name, width, height, clusters, player: player ?? (existsSync(path.join(root, defaultPlayer)) ? defaultPlayer : undefined) });
+        const res = await saveMap(root, doc, { force: true });
+        const ow = doc.overworld!;
+        const tunnels = doc.layers.ground.join("").split("").filter((c) => c === "U").length;
+        return text({
+          saved: res.saved,
+          file: res.file,
+          errors: res.errors,
+          warnings: res.warnings,
+          size: `${doc.width}x${doc.height}`,
+          regions: ow.regions.map((r) => ({ id: r.id, name: r.name })),
+          towns: ow.towns.map((t) => ({ id: t.id, kind: t.kind, region: t.region, name: t.name, scene: t.scene, entrance: t.entrance, station: t.station ?? null })),
+          routes: ow.routes.map(({ path: p, ...r }) => ({ ...r, length: p?.length ?? 0 })),
+          tunnelTiles: tunnels,
+        });
+      } catch (e) {
+        return err(msg(e));
+      }
+    },
+  );
+
+  server.registerTool(
+    "check_map",
+    {
+      title: "Check map",
+      description: "Validate a map (errors / warnings / stats). For overworld maps pass scenes (workspace-relative Easy Scene workspace, scenes folder or exports folder) to also check that every town links to an existing side-view scene.",
+      inputSchema: { id: IdSchema, scenes: z.string().optional(), strict: z.boolean().optional().describe("Warnings count as errors") },
+    },
+    async ({ id, scenes, strict }) => {
+      try {
+        const r = await readMap(root, id);
+        const errors = [...r.errors];
+        let sceneLinks: { towns: number; scenes: number } | null = null;
+        if (scenes && r.doc?.overworld) {
+          const ids = sceneIdsIn(resolveInside(root, scenes));
+          errors.push(...checkSceneLinks(r.doc, ids));
+          sceneLinks = { towns: r.doc.overworld.towns.length, scenes: ids.size };
+        }
+        const ok = !errors.length && !(strict && r.warnings.length);
+        return text({ id, ok, errors, warnings: r.warnings, sceneLinks, ...(r.doc ? { stats: mapStats(r.doc) } : {}) });
       } catch (e) {
         return err(msg(e));
       }

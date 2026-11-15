@@ -5,11 +5,12 @@
  * Each object is a procedurally painted PNG (CC0) with a footprint (solid tiles) used for collision.
  */
 import { CITY_OBJECT_KINDS, CITY_PAINTERS } from "./cityObjects.js";
+import { OVERWORLD_OBJECT_KINDS, OVERWORLD_PAINTERS } from "./overworldObjects.js";
 import { c, noise, Pix, type Rgba, type View } from "./pixel.js";
 import type { RgbaImage } from "./raster.js";
 import { TILE_SIZE } from "./types.js";
 
-export type ObjectCategory = "building" | "nature" | "prop" | "floor";
+export type ObjectCategory = "building" | "nature" | "prop" | "floor" | "town";
 
 export interface ObjectKind {
   kind: string;
@@ -52,6 +53,8 @@ export const OBJECT_KINDS: readonly ObjectKind[] = [
   { kind: "bridge_v", name: "Plank bridge (north–south)", nameTh: "สะพานไม้ (แนวตั้ง)", category: "floor", w: 1, h: 3, solid: null, floor: true },
   // brick town (city street set, see cityObjects.ts)
   ...CITY_OBJECT_KINDS,
+  // overworld town markers (world map scale, see overworldObjects.ts)
+  ...OVERWORLD_OBJECT_KINDS,
 ];
 
 export const OBJECT_BY_KIND = new Map(OBJECT_KINDS.map((o) => [o.kind, o]));
@@ -518,6 +521,7 @@ const PAINTERS: Record<string, (v: View) => void> = {
   bridge_h: (v) => drawBridge(v, true),
   bridge_v: (v) => drawBridge(v, false),
   ...CITY_PAINTERS,
+  ...OVERWORLD_PAINTERS,
 };
 
 const imageCache = new Map<string, RgbaImage>();

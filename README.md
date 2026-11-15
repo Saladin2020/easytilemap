@@ -160,6 +160,15 @@ easytilemap edit riverside --ops '[{"op":"place","kind":"sala","x":20,"y":4}]'
 easytilemap render thai_village_topdown --scale 3 --crop 160,60,480,270 --out camera.png   # --grid --collision --spawns
 easytilemap export thai_village_topdown --preset all     # png | godot | pixi | all
 easytilemap catalog · list · info · tileset · serve [--port 8808]
+
+# world map (overworld): town clusters + roads + railway, towns open side-view Easy Scene streets
+easytilemap generate overworld --seed 7 --id world --name "Overworld"   # --width 96 --height 64 --clusters 4 --player <sheet>
+easytilemap towns world                                                   # regions, towns, routes (--json)
+easyscene towns --from-overworld maps/world.json --export godot --night --out ../town-exports   # (Easy Scene) one street per town (+ night streets)
+easytilemap check world --scenes ../easyscene/scenes                      # every town's scene exists
+easytilemap export world --preset godot --town-scenes ../town-exports --town-player side_kopiah_boy.png
+easytilemap export world --preset pixi  --town-scenes ../town-exports --town-player side_kopiah_boy.png   # same game in the browser
+easytilemap render world --night --out world_night.png                    # lit windows, moonlit grade (export --night: start at night)
 ```
 
 (`npx tsx src/cli.ts …` from a checkout, `node dist/cli.js …` after `npm run build`.)
@@ -191,6 +200,31 @@ Drop `pixi.min.js` next to `index.html` to run offline; otherwise it loads PixiJ
 `AnimatedSprite2D` with `idle_<dir>` / `walk_<dir>` animations; spawns are `Marker2D` with
 `metadata/facing`. Headless check: `godot --headless --path . --script res://test_map.gd`.
 
+**Overworld (Godot)** — a map with an `overworld` block exports a playable world map as the main scene
+(`overworld_main.tscn` + `overworld/overworld_game.gd`): arrow keys walk tile by tile (water and mountains
+block), stepping on a town's entrance fades into its Easy Scene street (`towns/<scene>/`, side-view player,
+camera follow), walking off a street end or Esc returns you to the gate, and on a station platform Enter
+opens the train menu and rides the rail line to another station. The HUD shows Thai / English / Malay names
+(Kanit font). Headless test: `godot --headless --fixed-fps 60 --path . --script res://overworld/test_overworld.gd`;
+GIF frames: `xvfb-run godot --rendering-driver opengl3 --fixed-fps 60 --path . --script res://overworld/capture.gd -- mode=walk|train out=/tmp/frames`.
+Railway tunnels hide the train while it is inside the mountain. **N** toggles day / night (baked night
+atlas, lit windows, an additive glow layer; `export --night` starts at night). Towns follow it: entering a
+town at night shows its night street and N swaps day / night inside the town (player keeps its place, tinted
+at night) when the town was exported with Easy Scene `--night` (`<scene>_night.tscn`, linked as
+`townScenes[scene].night`); otherwise the day street is kept and only the player is tinted. Towns without an
+exported scene use a placeholder street.
+
+**Overworld (PixiJS v8)** — the `pixi` export of an overworld map is the same game in the browser:
+`index.html` runs `easytilemap-overworld.js` on top of `easytilemap-pixi.js` with the same rules (tile-step
+walk, town gates load the town's Easy Scene **Pixi** export from `towns/<scene>/` through its `load-scene.js`,
+street exits back to the gate, station Enter → train menu → ride, tunnels, N for night, also inside towns via
+`<scene>_night.pixi.json`) and a DOM HUD with
+Thai / English / Malay names in Kanit. Pass `--town-scenes` a folder with `<scene>-pixi/` exports
+(`easyscene towns --from-overworld … --export pixi`). `window.__ow` exposes `state()`, `step()`, `enterTown()`,
+`leaveTown()`, `rideTrain()`, `setNight()` and events for tests. Plain (non-overworld) maps export exactly as
+before. Browser test: `python3 scripts/check-pixi-overworld.py <export-dir>` (with `pixi.min.js` next to
+`index.html`) or `PIXI_JS=/path/pixi.min.js EASYSCENE=../easyscene npx vitest run test/pixi-overworld.test.ts`.
+
 ## Easy Sprite and Easy Dialogue
 
 * **Characters** are Easy Sprite native sheets exported with the top-down view
@@ -206,7 +240,8 @@ Drop `pixi.min.js` next to `index.html` to run offline; otherwise it loads PixiJ
 ## MCP
 
 `npm run mcp` (stdio) or `npm run mcp:http` (`http://127.0.0.1:8809/mcp`). Tools: `workspace_info`,
-`list_maps`, `get_map`, `write_map`, `edit_map`, `render_map`, `export_map`. See **[docs/MCP.md](docs/MCP.md)**.
+`list_maps`, `get_map`, `write_map`, `edit_map`, `render_map`, `export_map`, `generate_overworld`, `check_map`.
+See **[docs/MCP.md](docs/MCP.md)**.
 
 ## Security
 
@@ -221,6 +256,8 @@ npm run typecheck && npm test && npm run build && npm run smoke
 GODOT=/path/to/godot npx vitest run test/godot.test.ts      # import the export headless, compare node/tile counts
 npm run docs:images                                         # README images from the samples
 python3 scripts/check-pixi.py exports/thai_village_topdown-pixi   # headless Chrome: walk + collide, no console errors
+python3 scripts/check-pixi-overworld.py exports/world-pixi          # overworld: town in/out, train, tunnel, night
+python3 scripts/compat-check.py --old /tmp/easytilemap-master samples/maps/*.json   # old maps: check/render/export unchanged
 python3 scripts/capture-ui.py                              # editor screenshot (server on :8808)
 npx tsx scripts/build-samples.mts                          # regenerate samples/maps from src/lib/demoMaps.ts
 ```

@@ -17,12 +17,23 @@ import {
   resolveGround,
   shoreCoord,
   curbCoord,
+  lineExtraCoord,
+  railCoord,
+  tunnelCoord,
+  TERRAIN_VARIANTS,
+  VARIANT_TERRAINS,
+  L_E,
+  L_N,
+  L_S,
+  L_W,
 } from "../shared/autotile.js";
 import { characterLabel, DEFAULT_GROUND_ROW, facingRow, feetPx, frameColumn, walkColumns } from "../shared/characters.js";
 import { collisionGrid, collisionRects } from "../shared/map.js";
 import { OBJECT_BY_KIND } from "../shared/objects.js";
 import { renderMap } from "../shared/render.js";
 import { DECOR_CODES, TERRAINS, type Facing, type MapDoc } from "../shared/types.js";
+import { writeOverworldGodot, type OverworldGodotOptions } from "./overworldGodot.js";
+import { overworldHtml, writeOverworldPixi } from "./overworldPixi.js";
 import { encodePng } from "./png.js";
 import { assertSafeId, dirs, loadAssets, loadMap, resolveInside, RUNTIME_DIR, type LoadedAssets } from "./workspace.js";
 
@@ -39,6 +50,8 @@ export interface ExportOptions {
   trustedPaths?: boolean;
   /** Use this doc instead of loading maps/<id>.json. */
   doc?: MapDoc;
+  /** Overworld maps (Godot): Easy Scene exports, side-view player sheet, demo town. */
+  overworld?: OverworldGodotOptions;
 }
 
 export interface ExportResult {
@@ -60,6 +73,15 @@ const TERRAIN_COLORS: Record<string, string> = {
   sand: "Color(0.91, 0.83, 0.63, 1)",
   sidewalk: "Color(0.79, 0.77, 0.72, 1)",
   road: "Color(0.24, 0.25, 0.27, 1)",
+  forest: "Color(0.18, 0.42, 0.15, 1)",
+  mountain: "Color(0.52, 0.46, 0.39, 1)",
+  field: "Color(0.6, 0.69, 0.26, 1)",
+  rail: "Color(0.55, 0.54, 0.52, 1)",
+  crossing: "Color(0.75, 0.6, 0.4, 1)",
+  rail_bridge: "Color(0.31, 0.21, 0.13, 1)",
+  road_bridge: "Color(0.72, 0.51, 0.3, 1)",
+  station: "Color(0.79, 0.77, 0.72, 1)",
+  tunnel: "Color(0.2, 0.18, 0.16, 1)",
 };
 
 class Writer {
@@ -173,6 +195,32 @@ export function buildTileSetTres(texturePath: string, tileSize = 16): string {
   });
   const curbSpare = curbCoord(47);
   tile(curbSpare.col, curbSpare.row, road, () => road, 0.01);
+  // forest / mountain variant sets: same terrain + peering bits, lower probability, so Godot's terrain
+  // painter mixes them in too
+  for (const t of VARIANT_TERRAINS) {
+    const id = terrainId(t);
+    for (let variant = 1; variant < TERRAIN_VARIANTS; variant++) {
+      BLOB_MASKS.forEach((mask, i) => {
+        const at = blobCoord(t, i, variant);
+        tile(at.col, at.row, id, (bit) => (mask & bit ? id : 0), 0.4);
+      });
+      const spare = blobCoord(t, 47, variant);
+      tile(spare.col, spare.row, id, () => id, 0.2);
+    }
+  }
+  for (const side of [L_N, L_E, L_S, L_W]) {
+    const at = tunnelCoord(side);
+    tile(at.col, at.row, null);
+  }
+  // overworld line set: rails, crossings, bridges, stations (plain tiles; paint them from the atlas)
+  for (let m = 0; m < 16; m++) {
+    const at = railCoord(m);
+    tile(at.col, at.row, null);
+  }
+  for (const t of ["crossing", "rail_bridge", "road_bridge", "station"] as const) for (const ew of [true, false]) {
+    const at = lineExtraCoord(t, ew);
+    tile(at.col, at.row, null);
+  }
   DECOR_CODES.forEach((code) => {
     const at = decorCoord(code)!;
     tile(at.col, at.row, null);
@@ -491,7 +539,7 @@ limit_bottom = ${mh}`);
   return [`[gd_scene load_steps=${ext.length + subs.length + 1} format=3]`, ext.join("\n"), ...subs, ...nodes].filter(Boolean).join("\n\n") + "\n";
 }
 
-async function exportGodot(doc: MapDoc, assets: LoadedAssets, dir: string): Promise<string[]> {
+async function exportGodot(doc: MapDoc, assets: LoadedAssets, dir: string, ow?: OverworldGodotOptions): Promise<{ files: string[]; warnings: string[] }> {
   const w = new Writer(dir);
   const base = doc.id;
   const atlasRel = `tilesets/${doc.tileset}.png`;
@@ -521,10 +569,17 @@ async function exportGodot(doc: MapDoc, assets: LoadedAssets, dir: string): Prom
   }
   await w.text("character_patrol.gd", PATROL_GD);
   await w.text("camera_pan.gd", CAMERA_PAN_GD);
-  const main = `res://${base}.tscn`;
+  const mapScene = `res://${base}.tscn`;
   await w.text(`${base}.tscn`, buildGodotTscn(doc, assets, { tileset: `res://${base}_tileset.tres`, objects, characters, patrol: "res://character_patrol.gd", camera: "res://camera_pan.gd" }));
+  let main = mapScene;
+  const warnings: string[] = [];
+  if (doc.overworld) {
+    const res = await writeOverworldGodot(doc, assets, w, { mapScene, characters: new Map(characters.map((c) => [c.index, c.res])) }, ow ?? {});
+    main = res.main;
+    warnings.push(...res.warnings);
+  }
   await w.text("project.godot", godotProject(doc, main));
-  await w.text("test_map.gd", testMapGd(main));
+  await w.text("test_map.gd", testMapGd(mapScene));
   await w.text("screenshot.gd", SCREENSHOT_GD);
   await w.text(
     "README.txt",
@@ -547,9 +602,19 @@ ${base}.tscn
 Headless check: godot --headless --path . --script res://test_map.gd
 Screenshot:     xvfb-run godot --rendering-driver opengl3 --path . --script res://screenshot.gd -- out=/tmp/map.png
 Textures use Nearest filtering. Sample art is CC0, generated by Easy Tilemap (MIT).
-`,
+${doc.overworld ? `
+Overworld game (main scene overworld_main.tscn)
+  Arrow keys / WASD walk one tile at a time. Step on a town gate to enter its side view (Easy Scene,
+  towns/<scene>/); walk off either end of the street or press Esc to come back. On a station platform
+  press Enter, pick a destination with the arrow keys and ride the train.
+  overworld/overworld.json  towns, regions, routes, train paths, collision grid, player sheets
+  overworld/overworld_game.gd, town_runner.gd   game logic (signals: town_entered, town_left, train_arrived)
+  Test:    godot --headless --fixed-fps 60 --path . --script res://overworld/test_overworld.gd
+  Capture: xvfb-run godot --rendering-driver opengl3 --fixed-fps 60 --path . --script res://overworld/capture.gd -- mode=walk out=/tmp/frames
+  Font: Kanit (SIL OFL 1.1, fonts/OFL.txt) for Thai names.
+` : ""}`,
   );
-  return w.files;
+  return { files: w.files, warnings };
 }
 
 /** Bundle JSON consumed by runtime/pixi/easytilemap-pixi.js. */
@@ -602,7 +667,7 @@ export function buildPixiBundle(doc: MapDoc, assets: LoadedAssets, paths: { atla
   };
 }
 
-async function exportPixi(doc: MapDoc, assets: LoadedAssets, dir: string): Promise<string[]> {
+async function exportPixi(doc: MapDoc, assets: LoadedAssets, dir: string, ow?: OverworldGodotOptions): Promise<{ files: string[]; warnings: string[] }> {
   const w = new Writer(dir);
   const atlas = `tilesets/${doc.tileset}.png`;
   await w.bin(atlas, encodePng(assets.atlas));
@@ -624,7 +689,13 @@ async function exportPixi(doc: MapDoc, assets: LoadedAssets, dir: string): Promi
   await w.copy("easytilemap-pixi.js", path.join(RUNTIME_DIR, "pixi", "easytilemap-pixi.js"));
   const player = doc.characters.find((c) => c.name === "ton") ?? doc.characters.find((c) => !c.patrol);
   const playerName = player ? (player.name ?? characterLabel(player, doc.characters.indexOf(player))) : "";
-  await w.text("index.html", pixiHtml(doc, playerName));
+  const warnings: string[] = [];
+  if (doc.overworld) {
+    // overworld maps get the full game (towns, trains, night); plain maps keep the walk-around page
+    const res = await writeOverworldPixi(doc, w, assets, bundle.characters, ow ?? {});
+    warnings.push(...res.warnings);
+    await w.text("index.html", overworldHtml(doc));
+  } else await w.text("index.html", pixiHtml(doc, playerName));
   await w.text(
     "README.txt",
     `Easy Tilemap — PixiJS v8 export of "${doc.name}" (${doc.id})
@@ -638,9 +709,19 @@ Files
   tilesets/ objects/ characters/
 
 index.html loads ./pixi.min.js when present, else PixiJS v8 from jsDelivr. Sample art CC0, code MIT.
-`,
+${doc.overworld ? `
+Overworld game (index.html runs easytilemap-overworld.js, same rules as the Godot export)
+  Arrow keys / WASD walk one tile at a time. Step on a town gate to enter its side view (Easy Scene
+  Pixi export under towns/<scene>/); walk off an exit end of the street or press Esc to come back.
+  On a station platform press Enter, pick a destination with the arrow keys, Enter rides the train
+  (hidden inside tunnels). N toggles day / night.
+  overworld/overworld.json  towns, regions, routes, train paths, tunnels, night assets, player sheets
+  window.__ow               state(), step(dx, dy), teleport(x, y), enterTown(id), leaveTown(),
+                            rideTrain(id), setNight(on), on(event, fn)
+  Font: Kanit (SIL OFL 1.1, fonts/OFL.txt) for Thai names.
+` : ""}`,
   );
-  return w.files;
+  return { files: w.files, warnings };
 }
 
 function pixiHtml(doc: MapDoc, player: string): string {
@@ -713,8 +794,22 @@ export async function exportMap(root: string, opts: ExportOptions): Promise<Expo
       const f = path.join(dir, `${doc.id}.png`);
       await writeFile(f, encodePng(renderMap(doc, assets, { scale: opts.scale ?? 2 })));
       res.files.push(f);
-    } else if (p === "godot") res.files.push(...(await exportGodot(doc, assets, dir)));
-    else res.files.push(...(await exportPixi(doc, assets, dir)));
+      // a night render next to it for overworld maps (or when asked) — plain maps export as before
+      if (doc.overworld || opts.overworld?.night) {
+        const n = path.join(dir, `${doc.id}_night.png`);
+        await writeFile(n, encodePng(renderMap(doc, assets, { scale: opts.scale ?? 2, night: true })));
+        res.files.push(n);
+      }
+    } else if (p === "godot") {
+      const g = await exportGodot(doc, assets, dir, opts.overworld);
+      res.files.push(...g.files);
+      res.warnings.push(...g.warnings);
+    }
+    else {
+      const px = await exportPixi(doc, assets, dir, opts.overworld);
+      res.files.push(...px.files);
+      res.warnings.push(...px.warnings);
+    }
   };
   if (preset === "all") for (const p of ["png", "godot", "pixi"] as const) await run(p);
   else await run(preset);

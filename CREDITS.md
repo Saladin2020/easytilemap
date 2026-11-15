@@ -23,5 +23,8 @@ These are dedicated to the public domain (CC0 1.0): use them in any project, no 
 
 ## Runtimes
 
+* **Kanit** (`runtime/fonts/Kanit-Regular.ttf`, copied into overworld Godot exports for the Thai / English /
+  Malay HUD) — Copyright 2020 The Kanit Project Authors, SIL Open Font License 1.1 (`runtime/fonts/OFL.txt`).
+
 * PixiJS v8 is **not** bundled: the exported `index.html` loads `./pixi.min.js` if you drop it next to the
   file, otherwise the jsDelivr CDN (`pixi.js@8`, MIT).

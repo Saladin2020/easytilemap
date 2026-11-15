@@ -25,10 +25,33 @@ import {
   decorCoord,
   CURB_ROW,
   CITY_DECOR_ROW,
+  lineExtraCoord,
+  LINE_EXTRA_ROW,
+  railCoord,
+  RAIL_ROW,
+  TERRAIN_VARIANTS,
+  TUNNEL_ROW,
+  tunnelCoord,
+  VARIANT_TERRAINS,
+  L_E,
+  L_N,
+  L_S,
+  L_W,
   shoreCoord,
   SHORE_ROW,
 } from "./autotile.js";
 import { paintCityDecor, paintRoadTile, paintSidewalkTile } from "./cityTiles.js";
+import {
+  paintCrossingTile,
+  paintFieldTile,
+  paintForestTile,
+  paintMountainTile,
+  paintRailBridgeTile,
+  paintRailTile,
+  paintRoadBridgeTile,
+  paintStationTile,
+  paintTunnelTile,
+} from "./overworldTiles.js";
 import { c, noise, Pix, shade, type Rgba, type View } from "./pixel.js";
 import type { RgbaImage } from "./raster.js";
 import { DECOR_CODES, TILE_SIZE, type Terrain } from "./types.js";
@@ -75,8 +98,8 @@ export function grassPx(x: number, y: number, variant = 0): Rgba {
   return col;
 }
 
-type VillageTerrain = Exclude<Terrain, "grass" | "sidewalk" | "road">;
-const CITY_TERRAINS = new Set<Terrain>(["sidewalk", "road"]);
+type VillageTerrain = "dirt" | "paddy" | "water" | "stone" | "sand";
+const VILLAGE_TERRAINS = new Set<Terrain>(["dirt", "paddy", "water", "stone", "sand"]);
 
 function terrainPx(t: VillageTerrain, x: number, y: number, alt: boolean): Rgba {
   const s = alt ? 50 : 0;
@@ -314,7 +337,7 @@ export function generateAtlas(): RgbaImage {
   const tile = (col: number, row: number) => p.view(col * T, row * T, T, T);
   for (let v = 0; v < GRASS_VARIANTS; v++) paintGrass(tile(v, 0), v);
   for (const t of OVERLAY_TERRAINS) {
-    if (CITY_TERRAINS.has(t)) continue;
+    if (!VILLAGE_TERRAINS.has(t)) continue;
     const vt = t as VillageTerrain;
     BLOB_MASKS.forEach((mask, i) => {
       const at = blobCoord(vt, i);
@@ -340,6 +363,42 @@ export function generateAtlas(): RgbaImage {
   });
   const shoreSpare = shoreCoord(47);
   paintBlobTile(tile(shoreSpare.col, shoreSpare.row), "water", 255, true, true);
+  // overworld: forest / mountain / field blobs, then the line set (rail, crossing, bridges, station)
+  const painters = { forest: paintForestTile, mountain: paintMountainTile, field: paintFieldTile } as const;
+  for (const t of ["forest", "mountain", "field"] as const) {
+    for (let i = 0; i < 48; i++) {
+      const at = blobCoord(t, i);
+      painters[t](tile(at.col, at.row), i < 47 ? BLOB_MASKS[i]! : 255, i === 47, g0);
+    }
+  }
+  for (const t of VARIANT_TERRAINS) {
+    for (let variant = 1; variant < TERRAIN_VARIANTS; variant++) {
+      for (let i = 0; i < 48; i++) {
+        const at = blobCoord(t, i, variant);
+        painters[t](tile(at.col, at.row), i < 47 ? BLOB_MASKS[i]! : 255, i === 47, g0, variant);
+      }
+    }
+  }
+  for (let m = 0; m < 16; m++) {
+    const at = railCoord(m);
+    paintRailTile(tile(at.col, at.row), m, g0);
+  }
+  for (const side of [L_N, L_E, L_S, L_W]) {
+    const at = tunnelCoord(side);
+    paintTunnelTile(tile(at.col, at.row), side, g0);
+  }
+  const dirtTile = (v: View, mask: number) => paintBlobTile(v, "dirt", mask, false);
+  const waterTile = (v: View) => paintBlobTile(v, "water", 255, false);
+  for (const ew of [true, false]) {
+    let at = lineExtraCoord("crossing", ew);
+    paintCrossingTile(tile(at.col, at.row), ew, dirtTile);
+    at = lineExtraCoord("rail_bridge", ew);
+    paintRailBridgeTile(tile(at.col, at.row), ew, waterTile);
+    at = lineExtraCoord("road_bridge", ew);
+    paintRoadBridgeTile(tile(at.col, at.row), ew, waterTile);
+    at = lineExtraCoord("station", ew);
+    paintStationTile(tile(at.col, at.row), ew, g0);
+  }
   DECOR_CODES.forEach((code, i) => {
     const at = decorCoord(code)!;
     if (i < ATLAS_COLUMNS) paintDecor(tile(at.col, at.row), code);
@@ -357,7 +416,7 @@ export function tilesetMeta() {
   return {
     format: "easytilemap.tileset/1",
     id: SAMPLE_TILESET_ID,
-    name: "Thai village + city street (sample, CC0)",
+    name: "Thai village + city street + overworld (sample, CC0)",
     image: `${SAMPLE_TILESET_ID}.png`,
     tileSize: T,
     columns: ATLAS_COLUMNS,
@@ -371,6 +430,10 @@ export function tilesetMeta() {
       decor: { row: DECOR_ROW, codes: [...DECOR_CODES.slice(0, ATLAS_COLUMNS)] },
       cityDecor: { row: CITY_DECOR_ROW, codes: [...DECOR_CODES.slice(ATLAS_COLUMNS)] },
       markers: { row: MARKER_ROW, collision: 0, spawn: 1 },
+      rail: { firstRow: RAIL_ROW, tiles: 16, note: "index = N=1 E=2 S=4 W=8 mask of rail neighbours" },
+      tunnel: { row: TUNNEL_ROW, tiles: ["portal_n", "portal_e", "portal_s", "portal_w"], note: "mouth opens toward that side; inner tunnel cells use mountain tiles" },
+      variants: Object.fromEntries(VARIANT_TERRAINS.map((t) => [t, [1, 2].map((v) => ({ firstRow: blobCoord(t, 0, v).row, tiles: 48 }))])),
+      lineExtras: { row: LINE_EXTRA_ROW, tiles: ["crossing_ew", "crossing_ns", "rail_bridge_ew", "rail_bridge_ns", "road_bridge_ew", "road_bridge_ns", "station_ew", "station_ns"] },
     },
     license: "CC0-1.0",
   };

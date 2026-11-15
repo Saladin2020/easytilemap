@@ -11,6 +11,10 @@ import { parseCharacterArg } from "./shared/characters.js";
 import { applyOps, asciiMap, createMap, mapStats, validateMap, type MapOp } from "./shared/map.js";
 import { OBJECT_KINDS } from "./shared/objects.js";
 import { renderMap } from "./shared/render.js";
+import { checkSceneLinks, routeComponents } from "./shared/overworld.js";
+import { generateOverworld } from "./shared/overworldGen.js";
+import { sceneIdsIn } from "./lib/sceneLinks.js";
+import { readdirSync } from "node:fs";
 import { DECOR_CODES, DECOR_LABELS, FACINGS, LAYER_NAMES, TERRAINS, TERRAIN_CODE, TERRAIN_LABELS, type Diagnostic, type Facing, type LayerName, type MapDoc, type Terrain, type ValidateResult } from "./shared/types.js";
 import { EXPORT_PRESETS, exportMap, type ExportPreset } from "./lib/export.js";
 import { encodePng } from "./lib/png.js";
@@ -172,10 +176,16 @@ program
   .option("--json")
   .option("--ascii", "Print an ASCII overview")
   .option("--strict", "Treat warnings as errors")
-  .action(async (arg: string, o: { workspace?: string; json?: boolean; ascii?: boolean; strict?: boolean }) => {
+  .option("--scenes <dir>", "Overworld: check town scene links against an Easy Scene workspace (scenes/*.json) or a folder of scene exports")
+  .action(async (arg: string, o: { workspace?: string; json?: boolean; ascii?: boolean; strict?: boolean; scenes?: string }) => {
     try {
       const file = mapFile(arg, workspaceOf(o.workspace));
       const res = await readMapFile(file);
+      if (o.scenes && res.doc?.overworld) {
+        const ids = sceneIdsIn(o.scenes);
+        for (const d of checkSceneLinks(res.doc, ids)) res.errors.push(d);
+        if (!res.errors.length && !o.json) console.log(`scene links ok · ${res.doc.overworld.towns.length} towns → ${ids.size} scenes in ${o.scenes}`);
+      }
       if (o.json) console.log(JSON.stringify({ file, errors: res.errors, warnings: res.warnings, stats: res.doc ? mapStats(res.doc) : null }, null, 2));
       else {
         printDiagnostics(path.relative(process.cwd(), file) || file, res);
@@ -186,6 +196,77 @@ program
         }
       }
       if (res.errors.length || (o.strict && res.warnings.length)) process.exit(1);
+    } catch (e) {
+      fail(e);
+    }
+  });
+
+program
+  .command("generate")
+  .description("Generate a map. overworld: seeded world map with town clusters, roads and a railway")
+  .argument("<kind>", "overworld")
+  .option("--seed <n>", "Any integer; the same seed gives the same map", "1")
+  .option("--id <id>", "Map id (default overworld_<seed>)")
+  .option("--name <name>")
+  .option("--width <n>", "Tiles", "96")
+  .option("--height <n>", "Tiles", "64")
+  .option("--clusters <n>", "Town clusters (regions) 2–8", "4")
+  .option("--player <sheet>", "Easy Sprite top-down sheet for the player (default characters/town_kopiah_boy.png when present)")
+  .option("--force", "Overwrite an existing map")
+  .option("--workspace <path>")
+  .option("--json", "Print towns / routes as JSON")
+  .action(async (kind: string, o: { seed: string; id?: string; name?: string; width: string; height: string; clusters: string; player?: string; force?: boolean; workspace?: string; json?: boolean }) => {
+    try {
+      if (kind !== "overworld") throw new Error(`Unknown generator "${kind}" (overworld)`);
+      const root = workspaceOf(o.workspace);
+      const seed = Number(o.seed);
+      if (!Number.isFinite(seed)) throw new Error("--seed must be a number");
+      const id = o.id ?? `overworld_${Math.round(seed) >>> 0}`;
+      if (existsSync(mapPath(root, id)) && !o.force) throw new Error(`Map "${id}" exists (use --force)`);
+      const defaultPlayer = "characters/town_kopiah_boy.png";
+      const player = o.player ?? (existsSync(path.join(root, defaultPlayer)) ? defaultPlayer : undefined);
+      const doc = generateOverworld({ seed, id, name: o.name, width: Number(o.width), height: Number(o.height), clusters: Number(o.clusters), player });
+      const res = await saveMap(root, doc, { force: true });
+      if (!res.saved) {
+        printDiagnostics(id, res);
+        process.exit(1);
+      }
+      const ow = doc.overworld!;
+      if (o.json) return console.log(JSON.stringify({ file: res.file, overworld: { ...ow, routes: ow.routes.map(({ path: p, ...r }) => ({ ...r, length: p?.length ?? 0 })) } }, null, 2));
+      console.log(`generated ${res.file} · ${doc.width}×${doc.height} · seed ${seed}`);
+      printTowns(doc);
+      res.warnings.forEach((w) => console.error(`warning: ${w.message}`));
+    } catch (e) {
+      fail(e);
+    }
+  });
+
+function printTowns(doc: MapDoc) {
+  const ow = doc.overworld;
+  if (!ow) return console.log("(no overworld data)");
+  for (const r of ow.regions) {
+    console.log(`  region ${r.id} · ${r.name.th} · ${r.name.en}${r.name.ms ? ` · ${r.name.ms}` : ""} (${r.culture ?? "?"})`);
+    for (const t of ow.towns.filter((x) => x.region === r.id)) {
+      console.log(`    ${t.id.padEnd(22)} ${t.kind.padEnd(14)} entrance ${t.entrance.join(",").padEnd(7)} scene ${t.scene}${t.station ? ` · station ${t.station.join(",")}` : ""}  ${t.name.th} · ${t.name.en}`);
+    }
+  }
+  const rail = ow.routes.filter((r) => r.kind === "rail");
+  const road = ow.routes.filter((r) => r.kind === "road");
+  console.log(`  routes: ${road.length} road · ${rail.length} rail · start ${ow.start ?? ow.towns[0]?.id ?? "-"} · ${routeComponents(ow).length} connected group(s)`);
+  for (const r of rail) console.log(`    rail ${r.from} → ${r.to} (${r.path?.length ?? "?"} tiles)`);
+}
+
+program
+  .command("towns")
+  .description("Overworld: list regions, towns (entrance, scene link, station) and routes")
+  .argument("<map>")
+  .option("--workspace <path>")
+  .option("--json")
+  .action(async (arg: string, o: { workspace?: string; json?: boolean }) => {
+    try {
+      const { doc } = await loadDoc(arg, workspaceOf(o.workspace));
+      if (o.json) return console.log(JSON.stringify(doc.overworld ?? null, null, 2));
+      printTowns(doc);
     } catch (e) {
       fail(e);
     }
@@ -320,8 +401,9 @@ program
   .option("--no-characters", "Hide characters")
   .option("--character <spec>", "Extra Easy Sprite character path[:x[:y[:facing[:anim]]]] (repeatable)", (v: string, prev: string[] = []) => [...prev, v])
   .option("--crop <x,y,w,h>", "Crop in map pixels (e.g. a 480×270 camera view)")
+  .option("--night", "Night look: moonlit grade, lit windows / lamps, glow around towns")
   .option("--workspace <path>")
-  .action(async (arg: string, o: { out: string; scale: string; grid?: boolean; collision?: boolean; spawns?: boolean; characters: boolean; character?: string[]; crop?: string; workspace?: string }) => {
+  .action(async (arg: string, o: { out: string; scale: string; grid?: boolean; collision?: boolean; spawns?: boolean; characters: boolean; character?: string[]; crop?: string; night?: boolean; workspace?: string }) => {
     try {
       const root = workspaceOf(o.workspace);
       const { doc: loaded } = await loadDoc(arg, root);
@@ -329,7 +411,7 @@ program
       const assets = await loadAssets(root, doc, { trusted: true });
       assets.warnings.forEach((w) => console.error(`warning: ${w}`));
       const crop = o.crop ? (([x, y, w, h]) => ({ x: x!, y: y!, w: w!, h: h! }))(nums(o.crop, 4, "--crop")) : undefined;
-      const img = renderMap(doc, assets, { scale: Number(o.scale), grid: o.grid, collision: o.collision, spawns: o.spawns, characters: o.characters, crop });
+      const img = renderMap(doc, assets, { scale: Number(o.scale), grid: o.grid, collision: o.collision, spawns: o.spawns, characters: o.characters, crop, night: o.night });
       await mkdir(path.dirname(path.resolve(o.out)), { recursive: true });
       await writeFile(o.out, encodePng(img));
       console.log(`wrote ${o.out} · ${img.width}×${img.height}`);
@@ -345,11 +427,22 @@ program
   .option("--preset <preset>", EXPORT_PRESETS.join(" | "), "all")
   .option("--out <dir>", "Output folder (default exports/<id>-<preset>)")
   .option("--scale <n>", "PNG scale", "2")
+  .option("--town-scenes <dir>", "Overworld: folder of Easy Scene exports (<scene>-godot/ for Godot, <scene>-pixi/ for Pixi) to copy in as the towns' side views")
+  .option("--town-player <sheet>", "Overworld: Easy Sprite side-view sheet for the player inside towns")
+  .option("--demo-town <id>", "Overworld (Godot): town used by overworld/capture.gd's walk-in demo")
+  .option("--night", "Also write <id>_night.png (png preset; always on for overworld maps) and start overworld games at night")
   .option("--workspace <path>")
   .option("--json")
-  .action(async (id: string, o: { preset: string; out?: string; scale: string; workspace?: string; json?: boolean }) => {
+  .action(async (id: string, o: { preset: string; out?: string; scale: string; townScenes?: string; townPlayer?: string; demoTown?: string; night?: boolean; workspace?: string; json?: boolean }) => {
     try {
-      const res = await exportMap(workspaceOf(o.workspace), { id, preset: o.preset as ExportPreset, out: o.out, scale: Number(o.scale), trustedPaths: true });
+      const res = await exportMap(workspaceOf(o.workspace), {
+        id,
+        preset: o.preset as ExportPreset,
+        out: o.out,
+        scale: Number(o.scale),
+        trustedPaths: true,
+        overworld: { townScenes: o.townScenes, townPlayer: o.townPlayer, demoTown: o.demoTown, night: Boolean(o.night) },
+      });
       if (o.json) return console.log(JSON.stringify(res, null, 2));
       for (const d of res.dirs) console.log(`exported ${d}`);
       console.log(`  ${res.files.length} files`);

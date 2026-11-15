@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ATLAS_ROWS, blobCoord, decorCoord, MARKER_ROW } from "../../src/shared/autotile";
+import { ATLAS_ROWS, blobCoord, decorCoord, isLineTerrain, L_E, L_W, lineExtraCoord, MARKER_ROW, railCoord, tunnelCoord, type BlobTerrain } from "../../src/shared/autotile";
 import type { LoadedSheet, RenderAssets } from "../../src/shared/render";
 import type { RgbaImage } from "../../src/shared/raster";
 import { createMap } from "../../src/shared/map";
@@ -27,7 +27,7 @@ const PRESETS = [
   { id: "pixi", label: "Pixi" },
   { id: "all", label: "All" },
 ] as const;
-const CATEGORY_LABEL: Record<ObjectCategory, string> = { building: "Buildings · อาคาร", nature: "Nature · ต้นไม้", prop: "Props · ของประดับ", floor: "Bridges & boats · สะพาน" };
+const CATEGORY_LABEL: Record<ObjectCategory, string> = { building: "Buildings · อาคาร", nature: "Nature · ต้นไม้", prop: "Props · ของประดับ", floor: "Bridges & boats · สะพาน", town: "World map towns · เมือง (แผนที่โลก)" };
 const ATLAS_W = 128;
 const ATLAS_H = ATLAS_ROWS * 16;
 
@@ -62,7 +62,11 @@ function iconFor(layer: LayerName, code: string): { col: number; row: number } |
   if (layer === "ground") {
     if (code === "g") return { col: 0, row: 0 };
     const t = TERRAINS.find((x) => TERRAIN_CODE[x] === code);
-    return t && t !== "grass" ? blobCoord(t, 46) : null;
+    if (!t || t === "grass") return null;
+    if (t === "rail") return railCoord(L_E | L_W);
+    if (t === "tunnel") return tunnelCoord(L_W);
+    if (isLineTerrain(t)) return lineExtraCoord(t, true);
+    return blobCoord(t as BlobTerrain, 46);
   }
   if (layer === "decor") return decorCoord(code);
   if (code === "#") return { col: 0, row: MARKER_ROW };
