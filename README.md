@@ -233,7 +233,8 @@ opens the train menu and rides the rail line to another station. The HUD shows T
 (Kanit font). Headless test: `godot --headless --fixed-fps 60 --path . --script res://overworld/test_overworld.gd`;
 GIF frames: `xvfb-run godot --rendering-driver opengl3 --fixed-fps 60 --path . --script res://overworld/capture.gd -- mode=walk|train out=/tmp/frames`.
 Railway tunnels hide the train while it is inside the mountain. **N** toggles day / night (baked night
-atlas, lit windows, an additive glow layer; `export --night` starts at night). Towns follow it: entering a
+atlas, lit windows, street lamps and lantern posts lit by explicit night masks recorded while their art is
+painted (utility poles have none, repainted poles fall back to the window colours), an additive glow layer; `export --night` starts at night). Towns follow it: entering a
 town at night shows its night street and N swaps day / night inside the town (player keeps its place, tinted
 at night) when the town was exported with Easy Scene `--night` (`<scene>_night.tscn`, linked as
 `townScenes[scene].night`); otherwise the day street is kept and only the player is tinted. Towns without an

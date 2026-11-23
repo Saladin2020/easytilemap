@@ -5,7 +5,7 @@
  * the Godot / Pixi exporters (which bake `*_night.png` copies so the game can toggle day / night).
  */
 import { LINE_EXTRA_ROW, lineExtraCoord, ATLAS_COLUMNS } from "./autotile.js";
-import { OBJECT_BY_KIND } from "./objects.js";
+import { OBJECT_BY_KIND, objectImage, objectNightMask } from "./objects.js";
 import { WINDOW_HEX } from "./overworldObjects.js";
 import { createImage, type RgbaImage } from "./raster.js";
 import type { LoadedSheet, RenderAssets } from "./render.js";
@@ -51,8 +51,9 @@ function grade(r: number, g: number, b: number, k: number): [number, number, num
  * Night copy of an image. `lit` pixels become warm light; `litRect` limits extra lamp colours to
  * regions (e.g. station tiles in the atlas). A small glow spills from lit pixels onto opaque neighbours.
  */
-export function nightImage(img: RgbaImage, opts: NightOptions & { lit?: ReadonlySet<number>; extraLit?: { set: ReadonlySet<number>; rects: Array<[number, number, number, number]> } } = {}): RgbaImage {
+export function nightImage(img: RgbaImage, opts: NightOptions & { lit?: ReadonlySet<number>; extraLit?: { set: ReadonlySet<number>; rects: Array<[number, number, number, number]> }; litMask?: Uint8Array } = {}): RgbaImage {
   const k = Math.max(0, Math.min(1, opts.strength ?? 1));
+  if (opts.litMask) return nightImageMasked(img, opts.litMask, k);
   const lit = opts.lit ?? LIT_COLORS;
   const out = createImage(img.width, img.height);
   const glow = new Float32Array(img.width * img.height);
@@ -106,6 +107,64 @@ export function nightImage(img: RgbaImage, opts: NightOptions & { lit?: Readonly
   return out;
 }
 
+/** Night copy from an explicit mask (1 = lit): the same warm light and 2 px spill, no colour guesses. */
+function nightImageMasked(img: RgbaImage, mask: Uint8Array, k: number): RgbaImage {
+  const out = createImage(img.width, img.height);
+  const glow = new Float32Array(img.width * img.height);
+  const w = img.width;
+  for (let p = 0; p < w * img.height; p++) {
+    const i = p * 4;
+    const r = img.data[i]!, g = img.data[i + 1]!, b = img.data[i + 2]!, a = img.data[i + 3]!;
+    out.data[i + 3] = a;
+    if (a === 0) continue;
+    if (k > 0 && mask[p]) {
+      const above = p >= w && img.data[i - w * 4 + 3]! > 0 && mask[p - w];
+      const [wr, wg, wb] = above ? [255, 176, 72] : [255, 214, 110];
+      out.data[i] = Math.round(r + (wr - r) * k);
+      out.data[i + 1] = Math.round(g + (wg - g) * k);
+      out.data[i + 2] = Math.round(b + (wb - b) * k);
+      const x = p % w, y = (p / w) | 0;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const xx = x + dx, yy = y + dy;
+        const d = Math.hypot(dx, dy);
+        if (xx < 0 || yy < 0 || xx >= w || yy >= img.height || d === 0 || d > 2.5) continue;
+        glow[yy * w + xx] = Math.max(glow[yy * w + xx]!, (1 - d / 2.8) * 0.55 * k);
+      }
+      continue;
+    }
+    const [nr, ng, nb] = grade(r, g, b, k);
+    out.data[i] = Math.round(nr);
+    out.data[i + 1] = Math.round(ng);
+    out.data[i + 2] = Math.round(nb);
+  }
+  for (let p = 0; p < glow.length; p++) {
+    const gl = glow[p]!;
+    if (!gl || mask[p] || out.data[p * 4 + 3] === 0) continue;
+    const i = p * 4;
+    out.data[i] = Math.min(255, Math.round(out.data[i]! + 200 * gl));
+    out.data[i + 1] = Math.min(255, Math.round(out.data[i + 1]! + 140 * gl));
+    out.data[i + 2] = Math.min(255, Math.round(out.data[i + 2]! + 40 * gl));
+  }
+  return out;
+}
+
+const sameImage = (a: RgbaImage, b: RgbaImage) => {
+  if (a === b) return true;
+  if (a.width !== b.width || a.height !== b.height || a.data.length !== b.data.length) return false;
+  for (let i = 0; i < a.data.length; i++) if (a.data[i] !== b.data[i]) return false;
+  return true;
+};
+
+/**
+ * Night copy of one object image. Pole lamps (NIGHT_MASKED_KINDS) still identical to the sample art use their
+ * explicit mask; everything else (and repainted poles) keeps the colour-based lighting.
+ */
+export function nightObject(kind: string, img: RgbaImage): RgbaImage {
+  const mask = objectNightMask(kind);
+  if (mask && sameImage(img, objectImage(kind))) return nightImage(img, { litMask: mask });
+  return nightImage(img);
+}
+
 /** Night atlas: everything graded; station platform tiles keep their lamps and safety lines lit. */
 export function nightAtlas(atlas: RgbaImage, tileSize = 16): RgbaImage {
   const rects: Array<[number, number, number, number]> = [];
@@ -140,7 +199,7 @@ export function nightAssets(assets: RenderAssets): RenderAssets {
     atlas: memo(atlasCache, assets.atlas, (a) => nightAtlas(a)),
     object: (kind) => {
       const img = assets.object(kind);
-      return img ? memo(objectCache, img, (i) => nightImage(i)) : undefined;
+      return img ? memo(objectCache, img, (i) => nightObject(kind, i)) : undefined;
     },
     ...(sheets ? { sheets } : {}),
   };

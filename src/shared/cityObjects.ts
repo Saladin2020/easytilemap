@@ -4,7 +4,7 @@
  * a roof-only block filler, big street trees whose canopy overhangs the road, shrubs, lamp and
  * utility poles, and a red postbox.
  */
-import { c, noise, shade, type Rgba, type View } from "./pixel.js";
+import { c, markLit, noise, shade, type Rgba, type View } from "./pixel.js";
 import type { ObjectKind } from "./objects.js";
 
 export const CITY_OBJECT_KINDS: readonly ObjectKind[] = [
@@ -305,7 +305,7 @@ function drawLampPole(v: View): void {
   v.rect(7, 8, 2, 36, c("#3a3f46"));
   v.vline(7, 8, 42, c("#555b64"));
   v.rect(3, 4, 10, 3, c("#2c3036"));
-  v.rect(4, 7, 8, 2, c("#ffe9a6"));
+  markLit(v, () => v.rect(4, 7, 8, 2, c("#ffe9a6"))); // bulb: lit at night by its mask
   v.hline(4, 11, 4, c("#4a5059"));
   v.outline(INK);
 }

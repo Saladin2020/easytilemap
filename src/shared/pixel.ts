@@ -22,6 +22,30 @@ export function noise(x: number, y: number, seed = 0): number {
   return (h >>> 0) / 4294967296;
 }
 
+/**
+ * Explicit night masks, recorded while painting: pixels drawn inside `markLit` light up at night (lamp bulbs,
+ * lanterns). Painting itself is unchanged, so day images stay byte-identical.
+ */
+const NIGHT_LIT = new WeakMap<RgbaImage, Uint8Array>();
+let litTarget: RgbaImage | null = null;
+
+/** Paint `draw` on `v` and mark every pixel it sets as lit at night. */
+export function markLit(v: View, draw: () => void): void {
+  if (!NIGHT_LIT.has(v.img)) NIGHT_LIT.set(v.img, new Uint8Array(v.img.width * v.img.height));
+  const prev = litTarget;
+  litTarget = v.img;
+  try {
+    draw();
+  } finally {
+    litTarget = prev;
+  }
+}
+
+/** The night mask recorded for an image (1 = lit), or undefined when nothing was marked. */
+export function litMask(img: RgbaImage): Uint8Array | undefined {
+  return NIGHT_LIT.get(img);
+}
+
 export class Pix {
   readonly img: RgbaImage;
   constructor(
@@ -59,6 +83,7 @@ export class View {
     y = Math.round(y);
     if (!this.inside(x, y)) return;
     const i = ((this.oy + y) * this.img.width + this.ox + x) * 4;
+    if (litTarget === this.img) NIGHT_LIT.get(this.img)![i >> 2] = 1;
     const d = this.img.data;
     const a = col[3];
     if (a >= 255 || d[i + 3] === 0) {
