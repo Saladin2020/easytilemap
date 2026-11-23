@@ -100,7 +100,9 @@ export async function startOverworld(PIXI, app, opts) {
 
   // ---------------------------------------------------------------- HUD (DOM: crisp Thai text)
   const hud = opts.hud ?? null;
-  const title = (t) => `${t.name.th} · ${t.name.en}${t.name.ms && t.name.ms !== t.name.en ? ` · ${t.name.ms}` : ""}`;
+  // only kampungs have Malay names; Thai and Chinese-Thai towns keep their own name in every language
+  // (older maps may still carry a translated "ms" for those: not shown)
+  const title = (t) => `${t.name.th} · ${t.name.en}${t.name.ms && t.name.ms !== t.name.en && t.kind === "malay_kampung" ? ` · ${t.name.ms}` : ""}`;
   const region = (id) => {
     const r = data.regions.find((x) => x.id === id);
     return r ? `${r.name.th} · ${r.name.en}` : id;

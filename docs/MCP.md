@@ -41,9 +41,10 @@ Cursor `~/.cursor/mcp.json`:
 | `write_map` | validate and save a whole `easytilemap/1` document, or create a blank `width`×`height` map; refuses to save with errors; `dryRun` only validates |
 | `edit_map` | apply ops in order and save: `fill` (rect), `paint` (cells), `line` / `path` (with width) on `ground` / `decor` / `collision`, `place` / `remove_object`, `spawn` / `remove_spawn`, `character` / `remove_character`, `resize`; returns the new ASCII |
 | `render_map` | PNG (scale 1–4, optional `crop`, `collision` / `grid` / `spawns` overlays, `night`) returned inline and saved in `exports/previews/` |
-| `export_map` | `png` · `godot` · `pixi` · `all` into `exports/<id>-<preset>/`; overworld maps: `townScenes` (folder of Easy Scene `<scene>-godot/` / `<scene>-pixi/` exports), `townPlayer` (side-view sheet), `night` |
+| `export_map` | `png` · `godot` · `pixi` · `all` into `exports/<id>-<preset>/`; overworld maps: `townScenes` (folder of Easy Scene `<scene>-godot/` / `<scene>-pixi/` exports), `townPlayer` (side-view sheet; default: the bundled Easy Sprite kopiah boy), `night` |
 | `generate_overworld` | seeded world map: town clusters (Thai / Malay kampung / Chinese-Thai / rural), roads, railway with stations and tunnels; returns regions, towns (entrance, station, scene id), routes, tunnel tile count. Same seed → same map; `force` overwrites |
 | `check_map` | validation errors / warnings / stats; `scenes` (workspace folder: Easy Scene workspace, scenes folder or exports) also checks every overworld town links to an existing scene; `strict` |
+| `upgrade_workspace` | bring an older workspace up to date without overwriting work: append new atlas rows (repainted rows kept, backup in `tilesets/_backup/`), add missing objects / sample maps / characters; `dryRun`; idempotent |
 
 ## Recommended flow
 

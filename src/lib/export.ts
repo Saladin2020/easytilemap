@@ -35,7 +35,7 @@ import { DECOR_CODES, TERRAINS, type Facing, type MapDoc } from "../shared/types
 import { writeOverworldGodot, type OverworldGodotOptions } from "./overworldGodot.js";
 import { overworldHtml, writeOverworldPixi } from "./overworldPixi.js";
 import { encodePng } from "./png.js";
-import { assertSafeId, dirs, loadAssets, loadMap, resolveInside, RUNTIME_DIR, type LoadedAssets } from "./workspace.js";
+import { assertSafeId, dirs, loadAssets, loadMap, resolveInside, RUNTIME_DIR, type LoadedAssets, pkgRoot } from "./workspace.js";
 
 export const EXPORT_PRESETS = ["png", "godot", "pixi", "all"] as const;
 export type ExportPreset = (typeof EXPORT_PRESETS)[number];
@@ -773,6 +773,12 @@ function pixiHtml(doc: MapDoc, player: string): string {
 
 // ---------------------------------------------------------------- entry
 
+/** Side-view player for overworld towns: the workspace's characters/side/side_kopiah_boy.png, else the bundled sample. */
+export function defaultTownPlayer(root: string): string | undefined {
+  return [path.join(dirs(root).characters, "side", DEFAULT_TOWN_PLAYER), path.join(pkgRoot, "samples", "side", DEFAULT_TOWN_PLAYER)].find((f) => existsSync(f));
+}
+export const DEFAULT_TOWN_PLAYER = "side_kopiah_boy.png";
+
 export async function exportMap(root: string, opts: ExportOptions): Promise<ExportResult> {
   const preset = opts.preset ?? "all";
   if (!(EXPORT_PRESETS as readonly string[]).includes(preset)) throw new Error(`Unknown preset ${preset} (${EXPORT_PRESETS.join(", ")})`);
@@ -786,6 +792,11 @@ export async function exportMap(root: string, opts: ExportOptions): Promise<Expo
     return path.join(dirs(root).exports, `${doc.id}-${p}`);
   };
   const res: ExportResult = { dirs: [], files: [], warnings: [...assets.warnings] };
+  // overworld towns: the sample side-view player (Easy Sprite) unless one is given
+  if (doc.overworld && !opts.overworld?.townPlayer) {
+    const sheet = defaultTownPlayer(root);
+    if (sheet) opts = { ...opts, overworld: { ...opts.overworld, townPlayer: sheet } };
+  }
   const run = async (p: Exclude<ExportPreset, "all">) => {
     const dir = outBase(p);
     await mkdir(dir, { recursive: true });

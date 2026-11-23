@@ -25,10 +25,17 @@ afterAll(async () => {
 const body = (res: unknown) => JSON.parse(((res as { content: Array<{ text: string }> }).content[0]!).text);
 
 describe("MCP server", () => {
-  it("lists the nine tools", async () => {
+  it("lists the ten tools", async () => {
     const tools = (await client.listTools()).tools.map((t) => t.name).sort();
     expect(tools).toEqual([...MCP_TOOL_NAMES].sort());
-    expect(tools).toHaveLength(9);
+    expect(tools).toHaveLength(10);
+  });
+
+  it("upgrade_workspace reports a fresh workspace as up to date", async () => {
+    const r = body(await client.callTool({ name: "upgrade_workspace", arguments: { dryRun: true } }));
+    expect(r.dryRun).toBe(true);
+    expect(r.added).toEqual([]);
+    expect(r.atlas).toBeUndefined();
   });
 
   it("creates, edits, renders and exports a map end to end", async () => {

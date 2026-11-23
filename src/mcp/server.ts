@@ -24,9 +24,9 @@ import { encodePng } from "../lib/png.js";
 import { sceneIdsIn } from "../lib/sceneLinks.js";
 import { checkSceneLinks } from "../shared/overworld.js";
 import { generateOverworld } from "../shared/overworldGen.js";
-import { dirs, loadAssets, mapPath, readMap, resolveInside, resolveWorkspace, saveMap, listMaps, workspaceSummary } from "../lib/workspace.js";
+import { dirs, loadAssets, mapPath, readMap, resolveInside, resolveWorkspace, saveMap, listMaps, upgradeWorkspace, workspaceSummary } from "../lib/workspace.js";
 
-export const MCP_TOOL_NAMES = ["workspace_info", "list_maps", "get_map", "write_map", "edit_map", "render_map", "export_map", "generate_overworld", "check_map"] as const;
+export const MCP_TOOL_NAMES = ["workspace_info", "list_maps", "get_map", "write_map", "edit_map", "render_map", "export_map", "generate_overworld", "check_map", "upgrade_workspace"] as const;
 
 const IdSchema = z.string().regex(/^[a-z0-9_-]+$/, "Use a-z, 0-9, _ or -");
 
@@ -106,6 +106,22 @@ export function createEasyTilemapMcp(workspaceRoot: string): McpServer {
         exportPresets: EXPORT_PRESETS,
         format: FORMAT_CHEATSHEET,
       });
+    },
+  );
+
+  server.registerTool(
+    "upgrade_workspace",
+    {
+      title: "Upgrade workspace",
+      description: "Bring a workspace made by an older Easy Tilemap up to date without overwriting work: append new atlas rows to an old tilesets/thai_village.png (repainted rows kept, backup in tilesets/_backup/), update the tileset JSON, add missing objects / sample maps / characters. Idempotent. Old workspaces render and export fine without it (missing rows are filled in memory).",
+      inputSchema: { dryRun: z.boolean().optional().describe("Only report what would change (default false)") },
+    },
+    async ({ dryRun }) => {
+      try {
+        return text(await upgradeWorkspace(root, { dryRun }));
+      } catch (e) {
+        return err(msg(e));
+      }
     },
   );
 
@@ -225,7 +241,7 @@ export function createEasyTilemapMcp(workspaceRoot: string): McpServer {
         preset: z.enum(EXPORT_PRESETS).optional().describe("Default all"),
         out: z.string().optional().describe("Workspace-relative output folder"),
         townScenes: z.string().optional().describe("Overworld: workspace-relative folder of Easy Scene exports (<scene>-godot/, <scene>-pixi/) used as the towns' side views"),
-        townPlayer: z.string().optional().describe("Overworld: workspace-relative Easy Sprite side-view sheet for the player inside towns"),
+        townPlayer: z.string().optional().describe("Overworld: workspace-relative Easy Sprite side-view sheet for the player inside towns (default characters/side/side_kopiah_boy.png, else the bundled sample)"),
         night: z.boolean().optional().describe("Start overworld games at night; png preset also writes <id>_night.png"),
       },
     },
