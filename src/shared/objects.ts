@@ -6,7 +6,7 @@
  */
 import { CITY_OBJECT_KINDS, CITY_PAINTERS } from "./cityObjects.js";
 import { OVERWORLD_OBJECT_KINDS, OVERWORLD_PAINTERS } from "./overworldObjects.js";
-import { c, noise, Pix, type Rgba, type View } from "./pixel.js";
+import { c, litMask, markLit, noise, Pix, type Rgba, type View } from "./pixel.js";
 import type { RgbaImage } from "./raster.js";
 import { TILE_SIZE } from "./types.js";
 
@@ -295,10 +295,13 @@ function drawLanternPost(v: View): void {
   v.shadow(8, 30, 5, 1.5);
   v.rect(7, 8, 2, 22, c("#5e3b20"));
   v.rect(3, 6, 10, 2, c("#5e3b20"));
-  v.ellipse(4, 11, 2.5, 3, c("#e04a32"));
-  v.ellipse(12, 11, 2.5, 3, c("#e04a32"));
-  v.set(4, 10, c("#ffd27a"));
-  v.set(12, 10, c("#ffd27a"));
+  // lanterns: lit at night by their mask
+  markLit(v, () => {
+    v.ellipse(4, 11, 2.5, 3, c("#e04a32"));
+    v.ellipse(12, 11, 2.5, 3, c("#e04a32"));
+    v.set(4, 10, c("#ffd27a"));
+    v.set(12, 10, c("#ffd27a"));
+  });
   v.outline(INK);
 }
 
@@ -525,6 +528,19 @@ const PAINTERS: Record<string, (v: View) => void> = {
 };
 
 const imageCache = new Map<string, RgbaImage>();
+
+/**
+ * Pole lamps whose night look comes only from the explicit mask painted with `markLit` (never from colour
+ * guesses): the street lamp and lantern post light their bulbs / lanterns, the utility pole has no lamp.
+ */
+export const NIGHT_MASKED_KINDS: ReadonlySet<string> = new Set(["lamp_pole", "lantern_post", "utility_pole"]);
+
+/** Explicit night mask (1 = lit) of a sample object kind, all-clear when nothing on it lights up. */
+export function objectNightMask(kind: string): Uint8Array | undefined {
+  if (!NIGHT_MASKED_KINDS.has(kind) || !PAINTERS[kind]) return undefined;
+  const img = objectImage(kind);
+  return litMask(img) ?? new Uint8Array(img.width * img.height);
+}
 
 /** Procedural PNG for one sample object kind (cached). */
 export function objectImage(kind: string): RgbaImage {

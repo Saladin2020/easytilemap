@@ -10,7 +10,7 @@ import path from "node:path";
 import { characterLabel, DEFAULT_GROUND_ROW, walkColumns } from "../shared/characters.js";
 import { collisionGrid } from "../shared/map.js";
 import { trainSheet } from "../shared/overworldObjects.js";
-import { nightAtlas, nightGlow, nightImage } from "../shared/night.js";
+import { nightAtlas, nightGlow, nightObject } from "../shared/night.js";
 import { travelGraph } from "../shared/overworld.js";
 import type { MapDoc } from "../shared/types.js";
 import { encodePng } from "./png.js";
@@ -50,7 +50,7 @@ export async function writeNightAssets(doc: MapDoc, assets: LoadedAssets, sink: 
     const img = assets.objects.get(o.kind);
     if (!img) continue;
     const rel = `objects/${o.kind}_night.png`;
-    await sink.bin(rel, encodePng(nightImage(img)));
+    await sink.bin(rel, encodePng(nightObject(o.kind, img)));
     objects[day] = `${prefix}${rel}`;
   }
   await sink.bin("overworld/night_glow.png", encodePng(nightGlow(doc)));
