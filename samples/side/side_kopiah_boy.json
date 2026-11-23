@@ -1,0 +1,68 @@
+{
+  "format": "easysprite.native",
+  "view": "side",
+  "frameSize": 48,
+  "columns": 30,
+  "rows": 3,
+  "directions": [
+    "right",
+    "left",
+    "front"
+  ],
+  "frames": [
+    "idle",
+    "walk0",
+    "walk1",
+    "walk2",
+    "run0",
+    "run1",
+    "run2",
+    "run3",
+    "jump0",
+    "jump1",
+    "wave0",
+    "wave1",
+    "carry0",
+    "carry1",
+    "farm0",
+    "farm1",
+    "cheer0",
+    "cheer1",
+    "attack0",
+    "attack1",
+    "hurt0",
+    "hurt1",
+    "fall0",
+    "fall1",
+    "sleep0",
+    "sleep1",
+    "tired0",
+    "tired1",
+    "sit",
+    "crouch"
+  ],
+  "project": {
+    "id": "side_kopiah_boy",
+    "name": "Adam (Kopiah Boy, Baju Melayu) · side",
+    "view": "side",
+    "selections": {
+      "body": "side_body_child_light",
+      "pants": "side_pants_kain_pelekat",
+      "shoes": "side_shoes_sandals",
+      "shirt": "side_shirt_baju_melayu",
+      "face": "side_face_neutral",
+      "accessory": "side_acc_kopiah",
+      "hair_front": "side_hair_crop_front",
+      "hair_back": "side_hair_crop_back"
+    },
+    "colors": {
+      "body": "#e8c4a0",
+      "hair_front": "#2a221c",
+      "shirt": "#3f8a5a",
+      "pants": "#7a2a3a",
+      "shoes": "#8a6a44",
+      "accessory": "#f0eee8",
+      "hair_back": "#2a221c"
+    }
+  }
+}

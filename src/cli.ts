@@ -21,6 +21,8 @@ import { encodePng } from "./lib/png.js";
 import {
   dirs,
   initWorkspace,
+  upgradeWorkspace,
+  type UpgradeReport,
   listMaps,
   loadAssets,
   mapPath,
@@ -93,15 +95,41 @@ program.name("easytilemap").description("Paint top-down 16px tile maps (autotile
 program
   .command("init")
   .description("Create maps/ tilesets/ characters/ exports/ with the Thai village demo")
-  .option("--force", "Overwrite samples, tileset PNGs and config")
+  .option("--force", "Overwrite samples, tileset PNGs and config (destroys repainted art and edited demo maps; prefer `upgrade`)")
   .option("--workspace <path>", "Workspace directory")
   .action(async (o: { force?: boolean; workspace?: string }) => {
-    const root = await initWorkspace(workspaceOf(o.workspace), { force: o.force });
+    const ws = workspaceOf(o.workspace);
+    const rep = o.force ? undefined : await upgradeWorkspace(ws);
+    const root = o.force ? await initWorkspace(ws, { force: true }) : rep!.root;
     console.log(`Initialized Easy Tilemap workspace at ${root}`);
+    if (rep) printUpgrade(rep, true);
     console.log("  maps/        easytilemap/1 JSON (thai_village_topdown demo)");
     console.log("  tilesets/    thai_village.png atlas (blob-47 terrains) + objects/*.png — repaint freely");
     console.log("  characters/  Easy Sprite top-down sheets (Thai town cast)");
     console.log("  exports/     PNG / Godot / PixiJS exports");
+  });
+
+function printUpgrade(rep: UpgradeReport, quiet = false): void {
+  const verb = rep.dryRun ? "would" : "";
+  if (rep.atlas) console.log(`  atlas ${rep.atlas.file}: ${rep.atlas.fromRows} → ${rep.atlas.toRows} rows (new rows appended, your rows kept${rep.atlas.backup ? `; old file ${verb ? "would be " : ""}backed up to ${rep.atlas.backup}` : ""})`);
+  if (rep.tilesetMeta) console.log(`  tileset ${rep.tilesetMeta.file}: ${rep.tilesetMeta.fromRows ?? "?"} → ${rep.tilesetMeta.toRows} rows${rep.tilesetMeta.backup ? ` (backup ${rep.tilesetMeta.backup})` : ""}`);
+  if (rep.added.length && !quiet) for (const f of rep.added) console.log(`  ${verb ? "would add" : "added"} ${f}`);
+  else if (rep.added.length) console.log(`  ${rep.added.length} missing file(s) added`);
+  for (const n of rep.notes) console.log(`  note: ${n}`);
+  if (!rep.atlas && !rep.tilesetMeta && !rep.added.length && !quiet) console.log("  already up to date");
+}
+
+program
+  .command("upgrade")
+  .description("Update a workspace made by an older version without overwriting your work (old atlas gets the new rows appended, missing objects / samples are added, backups in tilesets/_backup/)")
+  .option("--dry-run", "Only report what would change")
+  .option("--workspace <path>", "Workspace directory")
+  .option("--json", "JSON report")
+  .action(async (o: { dryRun?: boolean; workspace?: string; json?: boolean }) => {
+    const rep = await upgradeWorkspace(workspaceOf(o.workspace), { dryRun: o.dryRun });
+    if (o.json) return console.log(JSON.stringify(rep, null, 2));
+    console.log(`${rep.dryRun ? "Dry run: " : ""}Easy Tilemap workspace ${rep.root}`);
+    printUpgrade(rep);
   });
 
 program
@@ -428,7 +456,7 @@ program
   .option("--out <dir>", "Output folder (default exports/<id>-<preset>)")
   .option("--scale <n>", "PNG scale", "2")
   .option("--town-scenes <dir>", "Overworld: folder of Easy Scene exports (<scene>-godot/ for Godot, <scene>-pixi/ for Pixi) to copy in as the towns' side views")
-  .option("--town-player <sheet>", "Overworld: Easy Sprite side-view sheet for the player inside towns")
+  .option("--town-player <sheet>", "Overworld: Easy Sprite side-view sheet for the player inside towns (default characters/side/side_kopiah_boy.png, else the bundled sample)")
   .option("--demo-town <id>", "Overworld (Godot): town used by overworld/capture.gd's walk-in demo")
   .option("--night", "Also write <id>_night.png (png preset; always on for overworld maps) and start overworld games at night")
   .option("--workspace <path>")

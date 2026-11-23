@@ -200,7 +200,9 @@ func _build_ui() -> void:
 func _town_title(t: Dictionary) -> String:
 	var n: Dictionary = t.name
 	var s := "%s · %s" % [n.th, n.en]
-	if n.has("ms") and n.ms != n.en:
+	# only kampungs have Malay names; Thai and Chinese-Thai towns keep their own name in every language
+	# (older maps may still carry a translated "ms" for those: not shown)
+	if t.get("kind", "") == "malay_kampung" and n.has("ms") and n.ms != n.en:
 		s += " · " + str(n.ms)
 	return s
 

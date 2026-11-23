@@ -62,17 +62,23 @@ function fbm(x: number, y: number, seed: number): number {
 // ---------------------------------------------------------------- names
 
 type NameEntry = LocalName;
+/**
+ * Town names per kind. Thai settlements (thai_town, rural_village, brick_city) are Thai names: `th` in Thai
+ * script, `en` the RTGS romanisation and `ms` the same romanisation (a Thai place keeps its Thai name in every
+ * language). Only malay_kampung towns get Malay names. Chinese-Thai market towns keep their Hokkien / Teochew
+ * names (`ms` = `en`).
+ */
 const NAMES: Record<TownKind, NameEntry[]> = {
   thai_town: [
     { th: "เวียงทอง", en: "Wiang Thong", ms: "Wiang Thong" },
     { th: "เวียงคำ", en: "Wiang Kham", ms: "Wiang Kham" },
-    { th: "เมืองแก้ว", en: "Mueang Kaeo", ms: "Bandar Kaeo" },
-    { th: "เมืองสุวรรณ", en: "Mueang Suwan", ms: "Bandar Suwan" },
+    { th: "เมืองแก้ว", en: "Mueang Kaeo", ms: "Mueang Kaeo" },
+    { th: "เมืองสุวรรณ", en: "Mueang Suwan", ms: "Mueang Suwan" },
     { th: "ท่าน้ำทอง", en: "Tha Nam Thong", ms: "Tha Nam Thong" },
   ],
   brick_city: [
-    { th: "นครอิฐแดง", en: "Nakhon It Daeng", ms: "Bandar Bata Merah" },
-    { th: "นครหลวงใหม่", en: "New Capital", ms: "Ibu Kota Baharu" },
+    { th: "นครอิฐแดง", en: "Nakhon It Daeng", ms: "Nakhon It Daeng" },
+    { th: "นครหลวงใหม่", en: "Nakhon Luang Mai", ms: "Nakhon Luang Mai" },
   ],
   malay_kampung: [
     { th: "กำปงบุหงา", en: "Kampung Bunga", ms: "Kampung Bunga" },
@@ -82,19 +88,19 @@ const NAMES: Record<TownKind, NameEntry[]> = {
     { th: "กัวลาเมระห์", en: "Kuala Merah", ms: "Kuala Merah" },
   ],
   chinese_town: [
-    { th: "ตลาดซินเฮง", en: "Talat Sin Heng", ms: "Pekan Sin Heng" },
-    { th: "ตลาดเก่าฮกเกี้ยน", en: "Old Hokkien Market", ms: "Pasar Lama Hokkien" },
-    { th: "ปากน้ำเต็กเซ้ง", en: "Paknam Tek Seng", ms: "Kuala Tek Seng" },
-    { th: "ตลาดท่าเรือจีน", en: "Chinese Pier Market", ms: "Pasar Jeti Cina" },
+    { th: "ตลาดซินเฮง", en: "Talat Sin Heng", ms: "Talat Sin Heng" },
+    { th: "ตลาดเก่าฮกเกี้ยน", en: "Old Hokkien Market", ms: "Old Hokkien Market" },
+    { th: "ปากน้ำเต็กเซ้ง", en: "Paknam Tek Seng", ms: "Paknam Tek Seng" },
+    { th: "ตลาดท่าเรือจีน", en: "Chinese Pier Market", ms: "Chinese Pier Market" },
   ],
   rural_village: [
-    { th: "บ้านนาดี", en: "Ban Na Di", ms: "Kampung Na Di" },
-    { th: "บ้านหนองบัว", en: "Ban Nong Bua", ms: "Kampung Nong Bua" },
-    { th: "บ้านโคกสูง", en: "Ban Khok Sung", ms: "Kampung Khok Sung" },
-    { th: "บ้านห้วยใส", en: "Ban Huai Sai", ms: "Kampung Huai Sai" },
-    { th: "บ้านดอนแก้ว", en: "Ban Don Kaeo", ms: "Kampung Don Kaeo" },
-    { th: "บ้านป่าหวาย", en: "Ban Pa Wai", ms: "Kampung Pa Wai" },
-    { th: "บ้านทุ่งรวงทอง", en: "Ban Thung Ruang Thong", ms: "Kampung Thung Ruang Thong" },
+    { th: "บ้านนาดี", en: "Ban Na Di", ms: "Ban Na Di" },
+    { th: "บ้านหนองบัว", en: "Ban Nong Bua", ms: "Ban Nong Bua" },
+    { th: "บ้านโคกสูง", en: "Ban Khok Sung", ms: "Ban Khok Sung" },
+    { th: "บ้านห้วยใส", en: "Ban Huai Sai", ms: "Ban Huai Sai" },
+    { th: "บ้านดอนแก้ว", en: "Ban Don Kaeo", ms: "Ban Don Kaeo" },
+    { th: "บ้านป่าหวาย", en: "Ban Pa Wai", ms: "Ban Pa Wai" },
+    { th: "บ้านทุ่งรวงทอง", en: "Ban Thung Ruang Thong", ms: "Ban Thung Ruang Thong" },
   ],
 };
 

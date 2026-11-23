@@ -140,7 +140,11 @@ describe("overworld Godot export", () => {
     const data = JSON.parse(readFileSync(path.join(out, "overworld/overworld.json"), "utf8"));
     expect(data.towns.length).toBe(doc.overworld!.towns.length);
     expect(data.blocked.length).toBe(doc.height);
-    expect(res.warnings.some((w) => /town scene|townScenes|side-view/i.test(w))).toBe(true);
+    expect(res.warnings.some((w) => /town-scenes/i.test(w))).toBe(true);
+    // no --town-player: the bundled Easy Sprite side-view kopiah boy walks the towns
+    expect(res.warnings.some((w) => /side-view sheet/i.test(w))).toBe(false);
+    expect(existsSync(path.join(out, "characters", "side_player.png"))).toBe(true);
+    expect(data.sidePlayer?.image).toBe("res://characters/side_player.png");
   });
 });
 
@@ -267,5 +271,22 @@ describe("overworld Pixi export", () => {
     // png preset adds the night render for overworld maps
     const png = await exportMap(root, { id: doc.id, preset: "png", out: path.join(root, "exports", "ow-png") });
     expect(png.files.some((f) => f.endsWith(`${doc.id}_night.png`))).toBe(true);
+  });
+});
+
+describe("town names", () => {
+  const THAI = /[\u0E00-\u0E7F]/;
+  it.each([7, 11, 42, 2026])("seed %i: Thai towns and villages are Thai names in every field; Malay names only for kampungs", (seed) => {
+    for (const t of gen(seed).overworld!.towns) {
+      expect(t.name.th, t.id).toMatch(THAI);
+      if (t.kind !== "malay_kampung") expect(t.name.ms, t.id).toBe(t.name.en);
+      if (t.kind === "thai_town" || t.kind === "rural_village" || t.kind === "brick_city") {
+        // e.g. บ้านหนองบัว · Ban Nong Bua · Ban Nong Bua — never "Kampung Nong Bua"
+        expect(t.name.ms, t.id).toBe(t.name.en);
+        expect(`${t.name.en} ${t.name.ms}`, t.id).not.toMatch(/\b(Kampung|Bandar|Kuala|Pekan)\b/);
+      }
+      if (t.kind === "rural_village") expect(t.name.th, t.id).toMatch(/^บ้าน/);
+      if (t.kind === "malay_kampung") expect(t.name.ms, t.id).toMatch(/^(Kampung|Kuala) /);
+    }
   });
 });

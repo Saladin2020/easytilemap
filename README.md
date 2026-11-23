@@ -115,6 +115,20 @@ npx tsx src/cli.ts init --workspace ./my-map      # demo map, thai_village tiles
 npx tsx src/cli.ts serve --workspace ./my-map     # editor → http://127.0.0.1:8808/
 ```
 
+**Workspaces from an older version** keep working as they are: renders, exports and the editor fill atlas
+rows added since (city, overworld, tunnels…) from the built-in sample in memory. To get those rows as real
+pixels you can repaint, plus the new objects and samples, run `upgrade` (plain `init` does the same):
+
+```bash
+npx tsx src/cli.ts upgrade --workspace ./my-map --dry-run   # what would change
+npx tsx src/cli.ts upgrade --workspace ./my-map             # append new atlas rows, add missing files
+```
+
+It appends the missing rows to `tilesets/thai_village.png` and keeps every existing (repainted) row, updates
+`thai_village.json`, adds missing object PNGs, sample maps and characters, and backs the old atlas / JSON up to
+`tilesets/_backup/` first. Maps and characters you have are never overwritten, and running it twice changes
+nothing. `init --force` is different: it overwrites the atlas, objects, config and demo maps with fresh copies.
+
 Dev mode: `npm run dev` (API on 8808) + `npx vite --config web/vite.config.ts` (UI on 5176).
 
 The editor: **Paint** (ground / decor / collision, brush 1–5, Shift+drag fills a rectangle), **Select**
@@ -166,12 +180,18 @@ easytilemap generate overworld --seed 7 --id world --name "Overworld"   # --widt
 easytilemap towns world                                                   # regions, towns, routes (--json)
 easyscene towns --from-overworld maps/world.json --export godot --night --out ../town-exports   # (Easy Scene) one street per town (+ night streets)
 easytilemap check world --scenes ../easyscene/scenes                      # every town's scene exists
-easytilemap export world --preset godot --town-scenes ../town-exports --town-player side_kopiah_boy.png
-easytilemap export world --preset pixi  --town-scenes ../town-exports --town-player side_kopiah_boy.png   # same game in the browser
+easytilemap export world --preset godot --town-scenes ../town-exports   # --town-player <side-view sheet>
+easytilemap export world --preset pixi  --town-scenes ../town-exports   # same game in the browser
 easytilemap render world --night --out world_night.png                    # lit windows, moonlit grade (export --night: start at night)
 ```
 
 (`npx tsx src/cli.ts …` from a checkout, `node dist/cli.js …` after `npm run build`.)
+
+Town names: Thai towns, villages and the brick city have Thai names in every language (`th` บ้านหนองบัว,
+`en` / `ms` Ban Nong Bua), kampungs have Malay names and Chinese-Thai market towns their Hokkien / Teochew
+names. The HUD (Kanit font, Thai script) shows `th · en` (plus `ms` for a kampung whose Malay name differs).
+Inside towns the player is Adam, the Easy Sprite side-view kopiah boy in `characters/side/side_kopiah_boy.png`
+(bundled under `samples/side/`); pass `--town-player` for your own side-view sheet.
 
 ## Export
 
@@ -240,7 +260,7 @@ before. Browser test: `python3 scripts/check-pixi-overworld.py <export-dir>` (wi
 ## MCP
 
 `npm run mcp` (stdio) or `npm run mcp:http` (`http://127.0.0.1:8809/mcp`). Tools: `workspace_info`,
-`list_maps`, `get_map`, `write_map`, `edit_map`, `render_map`, `export_map`, `generate_overworld`, `check_map`.
+`list_maps`, `get_map`, `write_map`, `edit_map`, `render_map`, `export_map`, `generate_overworld`, `check_map`, `upgrade_workspace`.
 See **[docs/MCP.md](docs/MCP.md)**.
 
 ## Security

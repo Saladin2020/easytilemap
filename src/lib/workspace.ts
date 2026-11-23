@@ -62,24 +62,141 @@ export function resolveInside(root: string, p: string): string {
   return abs;
 }
 
-/** Write the sample atlas + object PNGs (so users can repaint them) and copy the demo map + cast. */
+/**
+ * Write the sample atlas + object PNGs (so users can repaint them) and copy the demo map + cast.
+ * Without `force` this never overwrites anything: on an existing workspace it is `upgradeWorkspace`
+ * (missing files are added and an old, shorter atlas gets the new rows appended, keeping repainted rows).
+ * `force` overwrites the samples, tileset PNGs and config with fresh copies (repainted art and edited demo maps are lost).
+ */
 export async function initWorkspace(dir = process.cwd(), opts: { force?: boolean } = {}): Promise<string> {
   const root = resolveWorkspace(dir);
+  if (!opts.force) {
+    await upgradeWorkspace(root);
+    return root;
+  }
   const d = dirs(root);
   for (const p of Object.values(d)) await mkdir(p, { recursive: true });
-  const cfg = path.join(root, CONFIG_NAME);
-  if (!existsSync(cfg) || opts.force) await writeFile(cfg, `${JSON.stringify(DEFAULT_CONFIG, null, 2)}\n`);
-  await writeSampleTileset(d.tilesets, opts.force);
+  await writeFile(path.join(root, CONFIG_NAME), `${JSON.stringify(DEFAULT_CONFIG, null, 2)}\n`);
+  await writeSampleTileset(d.tilesets, true);
   const samples = path.join(pkgRoot, "samples");
-  for (const [sub, dest] of [["maps", d.maps], ["characters", d.characters]] as const) {
+  for (const [sub, dest] of [["maps", d.maps], ["characters", d.characters], ["side", path.join(d.characters, "side")]] as const) {
     const src = path.join(samples, sub);
     if (!existsSync(src)) continue;
-    for (const f of await readdir(src)) {
-      const to = path.join(dest, f);
-      if (!existsSync(to) || opts.force) await copyFile(path.join(src, f), to);
-    }
+    await mkdir(dest, { recursive: true });
+    for (const f of await readdir(src)) await copyFile(path.join(src, f), path.join(dest, f));
   }
   return root;
+}
+
+export interface UpgradeReport {
+  root: string;
+  /** Workspace atlas extended with the rows added since it was written (repainted rows kept). */
+  atlas?: { file: string; fromRows: number; toRows: number; backup?: string };
+  /** tilesets/<id>.json rewritten for the current layout. */
+  tilesetMeta?: { file: string; fromRows?: number; toRows: number; backup?: string };
+  /** Files that did not exist and were written (objects, sample maps and characters, config, atlas). */
+  added: string[];
+  /** Things left alone, with the reason (custom atlas size, …). */
+  notes: string[];
+  dryRun: boolean;
+}
+
+/**
+ * Bring a workspace made by an older Easy Tilemap up to date without touching the user's work:
+ * - tilesets/thai_village.png shorter than the current atlas (written before the city / overworld rows were
+ *   appended): the missing rows are appended from the generated sample, every existing row is kept as is,
+ *   and the old file is backed up to tilesets/_backup/ first. Rendering and exports already fill those rows in
+ *   memory; this makes them real pixels you can repaint.
+ * - tilesets/thai_village.json describing fewer rows / objects: rewritten (old copy backed up).
+ * - missing object PNGs, sample maps, sample characters and the config: written.
+ * Maps, characters, repainted rows and objects that exist are never overwritten. Idempotent.
+ */
+export async function upgradeWorkspace(dir = process.cwd(), opts: { dryRun?: boolean } = {}): Promise<UpgradeReport> {
+  const root = resolveWorkspace(dir);
+  const dry = Boolean(opts.dryRun);
+  const rep: UpgradeReport = { root, added: [], notes: [], dryRun: dry };
+  const d = dirs(root);
+  const rel = (f: string) => path.relative(root, f) || f;
+  const now = new Date();
+  const two = (n: number) => String(n).padStart(2, "0");
+  const stamp = `${now.getFullYear()}${two(now.getMonth() + 1)}${two(now.getDate())}-${two(now.getHours())}${two(now.getMinutes())}${two(now.getSeconds())}`; // local time
+  const backup = async (f: string): Promise<string> => {
+    const to = path.join(d.tilesets, "_backup", `${path.basename(f).replace(/(\.[a-z]+)$/i, `.${stamp}$1`)}`);
+    if (!dry) {
+      await mkdir(path.dirname(to), { recursive: true });
+      await copyFile(f, to);
+    }
+    return rel(to);
+  };
+  if (!dry) for (const p of Object.values(d)) await mkdir(p, { recursive: true });
+  const cfg = path.join(root, CONFIG_NAME);
+  if (!existsSync(cfg)) {
+    if (!dry) await writeFile(cfg, `${JSON.stringify(DEFAULT_CONFIG, null, 2)}\n`);
+    rep.added.push(rel(cfg));
+  }
+  // atlas
+  const full = generateAtlas();
+  const png = path.join(d.tilesets, `${SAMPLE_TILESET_ID}.png`);
+  if (!existsSync(png)) {
+    if (!dry) await writeFile(png, encodePng(full));
+    rep.added.push(rel(png));
+  } else {
+    const img = await readPng(png);
+    if (img.width !== full.width) rep.notes.push(`${rel(png)} is ${img.width} px wide (the sample atlas is ${full.width}): custom atlas, left as is`);
+    else if (img.height % 16 !== 0) rep.notes.push(`${rel(png)} height ${img.height} is not a multiple of 16: left as is`);
+    else if (img.height < full.height) {
+      const out = { width: full.width, height: full.height, data: new Uint8Array(full.data) } as RgbaImage;
+      out.data.set(img.data.subarray(0, img.width * img.height * 4), 0);
+      const b = await backup(png);
+      if (!dry) await writeFile(png, encodePng(out));
+      rep.atlas = { file: rel(png), fromRows: img.height / 16, toRows: full.height / 16, backup: b };
+    }
+  }
+  // tileset meta
+  const metaFile = path.join(d.tilesets, `${SAMPLE_TILESET_ID}.json`);
+  const meta = { ...tilesetMeta(), objects: OBJECT_KINDS };
+  const metaText = `${JSON.stringify(meta, null, 2)}\n`;
+  if (!existsSync(metaFile)) {
+    if (!dry) await writeFile(metaFile, metaText);
+    rep.added.push(rel(metaFile));
+  } else {
+    let old: { rows?: number; objects?: Array<{ kind?: string }> } | undefined;
+    try {
+      old = JSON.parse(await readFile(metaFile, "utf8"));
+    } catch {
+      rep.notes.push(`${rel(metaFile)} is not valid JSON: left as is`);
+    }
+    if (old) {
+      const kinds = new Set((old.objects ?? []).map((o) => o.kind));
+      const stale = (typeof old.rows === "number" && old.rows < meta.rows) || OBJECT_KINDS.some((o) => !kinds.has(o.kind));
+      if (stale) {
+        const b = await backup(metaFile);
+        if (!dry) await writeFile(metaFile, metaText);
+        rep.tilesetMeta = { file: rel(metaFile), ...(typeof old.rows === "number" ? { fromRows: old.rows } : {}), toRows: meta.rows, backup: b };
+      }
+    }
+  }
+  // objects
+  for (const o of OBJECT_KINDS) {
+    const f = path.join(d.objects, `${o.kind}.png`);
+    if (existsSync(f)) continue;
+    if (!dry) await writeFile(f, encodePng(objectImage(o.kind)));
+    rep.added.push(rel(f));
+  }
+  // sample maps + cast
+  const samples = path.join(pkgRoot, "samples");
+  for (const [sub, dest] of [["maps", d.maps], ["characters", d.characters], ["side", path.join(d.characters, "side")]] as const) {
+    const src = path.join(samples, sub);
+    if (!existsSync(src)) continue;
+    if (!dry) await mkdir(dest, { recursive: true });
+    for (const f of (await readdir(src)).sort()) {
+      const to = path.join(dest, f);
+      if (existsSync(to)) continue;
+      if (!dry) await copyFile(path.join(src, f), to);
+      rep.added.push(rel(to));
+    }
+  }
+  return rep;
 }
 
 export async function writeSampleTileset(dir: string, force = false): Promise<string[]> {
