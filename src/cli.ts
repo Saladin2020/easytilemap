@@ -459,9 +459,10 @@ program
   .option("--town-player <sheet>", "Overworld: Easy Sprite side-view sheet for the player inside towns (default characters/side/side_kopiah_boy.png, else the bundled sample)")
   .option("--demo-town <id>", "Overworld (Godot): town used by overworld/capture.gd's walk-in demo")
   .option("--night", "Also write <id>_night.png (png preset; always on for overworld maps) and start overworld games at night")
+  .option("--airports <ids>", "Overworld (Pixi): comma-separated town ids that get an airport (flights between them, planes flying over)")
   .option("--workspace <path>")
   .option("--json")
-  .action(async (id: string, o: { preset: string; out?: string; scale: string; townScenes?: string; townPlayer?: string; demoTown?: string; night?: boolean; workspace?: string; json?: boolean }) => {
+  .action(async (id: string, o: { preset: string; out?: string; scale: string; townScenes?: string; townPlayer?: string; demoTown?: string; night?: boolean; airports?: string; workspace?: string; json?: boolean }) => {
     try {
       const res = await exportMap(workspaceOf(o.workspace), {
         id,
@@ -469,7 +470,7 @@ program
         out: o.out,
         scale: Number(o.scale),
         trustedPaths: true,
-        overworld: { townScenes: o.townScenes, townPlayer: o.townPlayer, demoTown: o.demoTown, night: Boolean(o.night) },
+        overworld: { townScenes: o.townScenes, townPlayer: o.townPlayer, demoTown: o.demoTown, night: Boolean(o.night), ...(o.airports ? { airports: o.airports.split(",").map((x) => x.trim()).filter(Boolean) } : {}) },
       });
       if (o.json) return console.log(JSON.stringify(res, null, 2));
       for (const d of res.dirs) console.log(`exported ${d}`);

@@ -9,8 +9,8 @@ import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { walkColumns } from "../shared/characters.js";
 import { collisionGrid } from "../shared/map.js";
-import { trainSheet } from "../shared/overworldObjects.js";
-import { travelGraph } from "../shared/overworld.js";
+import { airportImage, planeSheet, trainSheet } from "../shared/overworldObjects.js";
+import { lowlandGrid, travelGraph } from "../shared/overworld.js";
 import type { MapDoc } from "../shared/types.js";
 import { pickDemo, tunnelCells, writeNightAssets, type FileSink, type OverworldGodotOptions } from "./overworldGodot.js";
 import { encodePng } from "./png.js";
@@ -44,7 +44,7 @@ export interface PixiCharacter {
 
 export async function writeOverworldPixi(doc: MapDoc, sink: FileSink, assets: LoadedAssets, characters: PixiCharacter[], opts: OverworldGodotOptions): Promise<{ warnings: string[]; player: string }> {
   const warnings: string[] = [];
-  const graph = travelGraph(doc)!;
+  const graph = travelGraph(doc, { airports: opts.airports, blocked: collisionGrid(doc) })!;
   const pick = characters.find((c) => c.name === "player") ?? characters.find((_, i) => !doc.characters[i]?.patrol) ?? null;
   const player = pick
     ? {
@@ -105,12 +105,18 @@ export async function writeOverworldPixi(doc: MapDoc, sink: FileSink, assets: Lo
     sidePlayer,
     townScenes,
     train: "overworld/train.png",
+    ...(graph.airports?.length ? { plane: "overworld/plane.png", airport: "overworld/airport.png" } : {}),
+    lowland: lowlandGrid(doc),
     tunnels: tunnelCells(doc),
     night,
     demo: pickDemo(doc, opts.demoTown),
   };
   await sink.text("overworld/overworld.json", `${JSON.stringify(data, null, 1)}\n`);
   await sink.bin("overworld/train.png", encodePng(trainSheet()));
+  if (graph.airports?.length) {
+    await sink.bin("overworld/plane.png", encodePng(planeSheet()));
+    await sink.bin("overworld/airport.png", encodePng(airportImage()));
+  }
   await sink.copy("easytilemap-overworld.js", path.join(RUNTIME_DIR, "pixi", "easytilemap-overworld.js"));
   await sink.copy("fonts/Kanit-Regular.ttf", path.join(RUNTIME_DIR, "fonts", "Kanit-Regular.ttf"));
   await sink.copy("fonts/OFL.txt", path.join(RUNTIME_DIR, "fonts", "OFL.txt"));

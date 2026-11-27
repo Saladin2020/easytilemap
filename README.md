@@ -342,3 +342,20 @@ Chinese-Thai shrine on the same street. หมู่บ้านพหุวั�
 
 Tileset, objects and icons are drawn procedurally and released as CC0. Sample cast composed with Easy Sprite.
 See [CREDITS.md](CREDITS.md). Code: MIT © Salahuddin Benno.
+
+## Town life: airports, flights, flood, station / airport hooks (DSK-5, Pixi runtime)
+
+- `export <map> --preset pixi --airports <townId,townId>` puts a 6 × 3 airport (runway, terminal, tower; gate on the
+  bottom row) on the nearest free grass / dirt / sand / paddy next to each town (`airportSites`, deterministic), and
+  writes `airports`, `flights` (every pair), `overworld/plane.png` and `overworld/airport.png` into the export.
+- On an airport gate press **Enter**: pick a destination; the plane rolls down the runway, lifts off (it grows and its
+  shadow moves away), flies across the map with the camera following, lands and taxis; `flight_departed` /
+  `flight_landed` events. `game.flyover()` (and every ~14–24 s on its own) sends a plane over the view.
+- **Flood**: every export carries `lowland` (0 = water, then distance from water, paddy one lower). `game.setFlood(0..1)`
+  covers low walkable cells (`floodReach(level)`, same stages as Easy NPC: puddles .15, ankle .35, knee .6, waist .85)
+  with water, a foam edge and glints; walking through it is slower (`floodWalk(depth)`: .8 / .65 / .5) and the
+  player leaves a ripple. `game.floodDepthAt(x, y)`.
+- `opts.onStation(townId, game)` / `opts.onAirport(airport, game)` replace the Enter menus so a game can walk the player
+  into a station hall / terminal first (buy a ticket, wait on the platform) and then call `game.rideTrain(to)` /
+  `game.fly(to)`; `game.setPaused(on)` freezes the map while such an overlay is open.
+- The Godot overworld export is unchanged (no airports / flood yet).
