@@ -52,6 +52,8 @@ describe.skipIf(!PIXI_JS || !existsSync(PIXI_JS))("PixiJS overworld (headless Ch
     expect(r.entered).toBeTruthy();
     if (ES) expect(r.town_loaded).toBe(true);
     expect(r.back_on_entrance).toBe(true);
+    expect(r.minimap).toBe(true);
+    expect(r.followers_trail).toBe(true);
     expect(r.arrived).toBe(true);
     expect(r.hidden_in_tunnel).toBe(true);
     expect(r.night_darker).toBe(true);

@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 const ws = mkdtempSync(path.join(os.tmpdir(), "easytilemap-cli-"));
-const cli = (...args) => execFileSync("npx", ["tsx", "src/cli.ts", ...args, "--workspace", ws], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+const cli = (...args) => execFileSync(process.execPath, ["--import", "tsx", "src/cli.ts", ...args, "--workspace", ws], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 let failed = false;
 const ok = (cond, label) => {
   console.log(`${cond ? "ok  " : "FAIL"} ${label}`);

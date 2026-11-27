@@ -251,6 +251,14 @@ Thai / English / Malay names in Kanit. Pass `--town-scenes` a folder with `<scen
 before. Browser test: `python3 scripts/check-pixi-overworld.py <export-dir>` (with `pixi.min.js` next to
 `index.html`) or `PIXI_JS=/path/pixi.min.js EASYSCENE=../easyscene npx vitest run test/pixi-overworld.test.ts`.
 
+### Party followers, minimap and world map (overworld games)
+
+Party members walk the leader's trail one tile behind each other (`followers` in `overworld.json`, `opts.followers`,
+or `await game.addFollower(spec)` with the same spec shape as `player`); they hide in towns, trains and tunnels.
+`game.minimap(parent, { x, y, cell: 2 })` and `game.worldMap(parent, { cell: 4, lang })` draw land, blocked tiles,
+rails, stations and town gates with live party dots. Godot: `add_follower(spec)`, `make_minimap(cell, labels)`.
+Rules live in `src/shared/party.ts` and are tested against both runtimes.
+
 ## Easy Sprite and Easy Dialogue
 
 * **Characters** are Easy Sprite native sheets exported with the top-down view
