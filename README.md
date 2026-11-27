@@ -362,3 +362,13 @@ See [CREDITS.md](CREDITS.md). Code: MIT © Salahuddin Benno.
   `game.townNpcLayer()` (put game NPCs here: behind stall / counter fronts, kept across day / night swaps),
   `game.setTownSpeed(f)` (e.g. Easy NPC `floodEffects(level).walk`). The street player stands in front of counter fronts.
 - The Godot overworld export is unchanged (no airports / flood yet).
+
+## DSK-6 town set (top-down)
+
+Original procedural pixel art (CC0), appended after the older kinds so existing indexes stay the same.
+Vehicles are drawn **nose-right** (`VEHICLE_KINDS`); mirror with `scale.x = -1` when one drives left:
+`car_sedan`, `car_taxi`, `car_pickup` (รถกระบะ), `tuktuk` (ตุ๊กตุ๊ก), `motorbike`, `songthaew` (รถสองแถว),
+`bus_city` (รถเมล์), `truck_cargo`. Buildings: `hospital` (โรงพยาบาล, green plus), `police_station` (สถานีตำรวจ),
+`post_office` (ที่ทำการไปรษณีย์), `bank` (ธนาคาร + ATM), `district_office` (ที่ว่าการอำเภอ), `company_office`,
+`shophouse_chinese` (ตึกแถวจีน), `house_modern`. ตลาดนัดมือสอง: `flea_stall_clothes`, `flea_stall_junk`, `clothes_rack`.
+(`kampung_house` and `house_wood` already cover the Malay and Thai wooden houses.)
