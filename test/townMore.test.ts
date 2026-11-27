@@ -42,4 +42,19 @@ describe("DSK-6 top-down objects", () => {
       expect(tx / tn, k).toBeLessThan(img.width / 2);
     }
   });
+
+  it("DSK-8 polish: shaded ramps (many tones) and an own-colour outline instead of one flat ink", () => {
+    for (const o of TOWN_MORE_OBJECT_KINDS) {
+      const img = objectImage(o.kind);
+      const tones = new Set<number>();
+      let ink = 0;
+      for (let i = 0; i < img.data.length; i += 4) {
+        if (img.data[i + 3] !== 255) continue;
+        tones.add((img.data[i]! << 16) | (img.data[i + 1]! << 8) | img.data[i + 2]!);
+        if (img.data[i] === 0x22 && img.data[i + 1] === 0x1a && img.data[i + 2] === 0x16) ink++;
+      }
+      expect(tones.size, o.kind).toBeGreaterThanOrEqual(VEHICLE_KINDS.has(o.kind) ? 18 : 30); // DSK-6 had 8–22
+      expect(ink, o.kind).toBe(0);
+    }
+  });
 });
