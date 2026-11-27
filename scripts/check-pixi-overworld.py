@@ -51,6 +51,11 @@ async def main():
         s0 = await st()
         out["start_mode"] = s0["mode"]
 
+        # 0. party followers + minimap / world map
+        await pg.evaluate("async () => { if (__ow.data.player) { await __ow.addFollower(__ow.data.player); await __ow.addFollower(__ow.data.player); } }")
+        mm = await pg.evaluate("() => { const c = new PIXI.Container(); const m = __ow.minimap(c, { cell: 2 }); const w = __ow.worldMap(c, { cell: 4 }); return { mini: m.children.length, world: w.children.length, towns: __ow.data.towns.length, grid: __ow.minimapGrid().join('').split('T').length - 1 }; }")
+        out["minimap"] = mm["mini"] >= 3 and mm["world"] >= 3 + mm["towns"] and mm["grid"] == mm["towns"]
+
         # 1. walk off the start gate and back onto it with real key presses
         ex, ey = s0["tile"]
         free = [(dx, dy) for (dx, dy) in DIRS if data["blocked"][ey + dy][ex + dx] == "."]
@@ -58,7 +63,9 @@ async def main():
         await pg.keyboard.press(DIRS[(dx, dy)])
         await pg.wait_for_function("!__ow.state().tile.every((v, i) => v === %s[i])" % json.dumps([ex, ey]), timeout=5000)
         await pg.wait_for_timeout(250)
-        out["stepped"] = (await st())["tile"] == [ex + dx, ey + dy]
+        sst = await st()
+        out["stepped"] = sst["tile"] == [ex + dx, ey + dy]
+        out["followers_trail"] = sst["followers"] == [[ex, ey], [ex, ey]]
         await pg.keyboard.press(DIRS[(-dx, -dy)])
         await pg.wait_for_function("__ow.state().mode === 'town'", timeout=20000)
         await pg.wait_for_timeout(700)

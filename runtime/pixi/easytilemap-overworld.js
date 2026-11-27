@@ -11,7 +11,9 @@
 //   import { startOverworld } from "./easytilemap-overworld.js";
 //   const game = await startOverworld(PIXI, app, { tilemap: "./world.tilemap.json", data: "./overworld/overworld.json", hud: el });
 //   game.state() · game.step(dx, dy) · game.teleport(x, y) · game.enterTown(id) · game.leaveTown()
-//   game.rideTrain(toId) · game.setNight(on) · game.on(event, fn)   (events: town_entered, town_left, train_arrived, night)
+//   game.rideTrain(toId) · game.setNight(on) · game.on(event, fn)   (events: town_entered, town_left, train_arrived, night, step)
+//   await game.addFollower(spec) · game.removeFollower(i)   party members walk the leader's trail (opts.followers too)
+//   game.minimap(parent, { x, y, cell }) · game.worldMap(parent, { cell, lang })   live player / follower dots
 import { loadTilemap } from "./easytilemap-pixi.js";
 
 const STEP_TIME = 0.16;
@@ -19,6 +21,37 @@ const TRAIN_SPEED = 120;
 const CAR_GAP = 15;
 const TOWN_SPEED = 72;
 const NIGHT_TINT = 0x9ea8e6;
+
+// ---- party + minimap rules (same as src/shared/party.ts and overworld_game.gd) ----
+export function pushTrail(trail, prev, max) {
+  const h = trail[0];
+  if (h && h[0] === prev[0] && h[1] === prev[1]) return trail;
+  trail.unshift([prev[0], prev[1]]);
+  if (trail.length > max) trail.length = max;
+  return trail;
+}
+export function followerTiles(trail, leader, n, spacing = 1) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const c = trail[(i + 1) * spacing - 1] ?? trail[trail.length - 1] ?? leader;
+    out.push([c[0], c[1]]);
+  }
+  return out;
+}
+export function facingToward(from, to, fallback = "front") {
+  const dx = to[0] - from[0], dy = to[1] - from[1];
+  if (!dx && !dy) return fallback;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? "right" : "left";
+  return dy > 0 ? "front" : "back";
+}
+export function minimapGrid(d) {
+  const g = d.blocked.map((row) => row.split("").map((c) => (c === "#" ? "#" : ".")));
+  const set = (c, ch) => { if (c && g[c[1]] && g[c[1]][c[0]] !== undefined) g[c[1]][c[0]] = ch; };
+  for (const t of d.trains ?? []) for (const c of t.path ?? []) set(c, "=");
+  for (const t of d.towns) { set(t.station, "S"); set(t.entrance, "T"); }
+  return g.map((r) => r.join(""));
+}
+export const MINIMAP_COLORS = { ".": 0x7fbf6a, "#": 0x3e5a74, "=": 0xa07a52, T: 0xf4ae3d, S: 0xe8604a };
 
 export async function startOverworld(PIXI, app, opts) {
   const base = new URL(opts.data, location.href);
@@ -98,6 +131,55 @@ export async function startOverworld(PIXI, app, opts) {
   };
   const feet = (x, y) => [x * ts + ts / 2, y * ts + ts - 1];
 
+  // ---------------------------------------------------------------- party followers
+  const party = [];
+  let trail = [];
+  const spacing = opts.followerSpacing ?? 1;
+  const followerAnim = (m, a, f = m.facing) => {
+    if (!m.frames) return;
+    const r = m.frames[f] ?? m.frames.front;
+    if (a === m.anim && f === m.facing && m.sprite.playing === (a === "walk")) return;
+    m.facing = f;
+    m.anim = a;
+    m.sprite.textures = r[a];
+    m.sprite.scale.x = r.flip ? -1 : 1;
+    if (a === "walk") m.sprite.play();
+    else m.sprite.gotoAndStop(0);
+  };
+  const placeFollower = (m) => {
+    const [px, py] = feet(...m.tile);
+    m.sprite.position.set(px, py);
+    m.sprite.zIndex = py - 0.5;
+  };
+  async function addFollower(spec) {
+    const fr = await frames(spec, ["front", "right", "back", "left"]);
+    const sp = new PIXI.AnimatedSprite(fr.front.idle);
+    sp.anchor.set(0.5, spec.groundRow / spec.frameSize);
+    sp.animationSpeed = 8 / 60;
+    sp.label = `follower:${spec.name ?? party.length}`;
+    sp.tint = s?.night ? NIGHT_TINT : 0xffffff;
+    map.world.addChild(sp);
+    const lead = s ? s.tile : [0, 0];
+    const m = { spec, sprite: sp, frames: fr, tile: [...(followerTiles(trail, lead, party.length + 1, spacing)[party.length])], facing: "front", anim: "", move: null };
+    followerAnim(m, "idle", "front");
+    placeFollower(m);
+    party.push(m);
+    return m;
+  }
+  function removeFollower(i = party.length - 1) {
+    const [m] = party.splice(i, 1);
+    m?.sprite.destroy();
+  }
+  const resetTrail = () => {
+    trail = [];
+    for (const m of party) {
+      m.tile = [...s.tile];
+      m.move = null;
+      followerAnim(m, "idle", facing);
+      placeFollower(m);
+    }
+  };
+
   // ---------------------------------------------------------------- HUD (DOM: crisp Thai text)
   const hud = opts.hud ?? null;
   // only kampungs have Malay names; Thai and Chinese-Thai towns keep their own name in every language
@@ -137,6 +219,7 @@ export async function startOverworld(PIXI, app, opts) {
   };
   s.tile = [...startTown.entrance];
   place();
+  for (const spec of opts.followers ?? data.followers ?? []) await addFollower(spec);
   setHud(`${title(startTown)}\n${region(startTown.region)}`);
 
   const fadeTo = (a, time = 0.3) =>
@@ -167,6 +250,17 @@ export async function startOverworld(PIXI, app, opts) {
     const [tx, ty] = feet(nx, ny);
     s.move = { fx, fy, tx, ty, t: 0, to: [nx, ny] };
     setAnim("walk", f);
+    pushTrail(trail, s.tile, Math.max(8, (party.length + 1) * spacing));
+    const goals = followerTiles(trail, [nx, ny], party.length, spacing);
+    party.forEach((m, i) => {
+      const to = goals[i];
+      if (to[0] === m.tile[0] && to[1] === m.tile[1]) return;
+      const [mfx, mfy] = feet(...m.tile);
+      const [mtx, mty] = feet(...to);
+      m.move = { fx: mfx, fy: mfy, tx: mtx, ty: mty, to };
+      followerAnim(m, "walk", facingToward(m.tile, to, m.facing));
+    });
+    emit("step", { tile: [nx, ny], followers: goals });
     return true;
   }
   function arrived() {
@@ -182,6 +276,7 @@ export async function startOverworld(PIXI, app, opts) {
     s.move = null;
     facing = f;
     place();
+    resetTrail();
   }
 
   // ---------------------------------------------------------------- towns (Easy Scene Pixi exports)
@@ -458,6 +553,7 @@ export async function startOverworld(PIXI, app, opts) {
     if (glow) glow.visible = on;
     const tint = on ? NIGHT_TINT : 0xffffff;
     player.tint = tint;
+    party.forEach((m) => (m.sprite.tint = tint));
     train.cars.forEach((c) => (c.tint = tint));
     if (s.townScene?.sprite) s.townScene.sprite.tint = tint;
     if (s.mode === "town") await swapStreet(on);
@@ -502,7 +598,13 @@ export async function startOverworld(PIXI, app, opts) {
         const f = Math.min(1, m.t);
         player.position.set(m.fx + (m.tx - m.fx) * f, m.fy + (m.ty - m.fy) * f);
         player.zIndex = player.y;
+        for (const pm of party) {
+          if (!pm.move) continue;
+          pm.sprite.position.set(pm.move.fx + (pm.move.tx - pm.move.fx) * f, pm.move.fy + (pm.move.ty - pm.move.fy) * f);
+          pm.sprite.zIndex = pm.sprite.y - 0.5;
+        }
         if (f >= 1) {
+          for (const pm of party) if (pm.move) (pm.tile = pm.move.to), (pm.move = null), placeFollower(pm);
           s.tile = m.to;
           s.move = null;
           arrived();
@@ -511,18 +613,81 @@ export async function startOverworld(PIXI, app, opts) {
         while (s.path.length && s.path[0][0] === s.tile[0] && s.path[0][1] === s.tile[1]) s.path.shift();
         const d = s.path.length ? [Math.sign(s.path[0][0] - s.tile[0]), Math.sign(s.path[0][1] - s.tile[1])] : heldDir();
         if (d) step(d[0], d[1]);
-        else setAnim("idle");
+        else {
+          setAnim("idle");
+          for (const pm of party) followerAnim(pm, "idle");
+        }
       }
     } else if (s.mode === "train") advanceTrain(dt);
     else if (s.mode === "town" && s.townScene) s.townScene.update(dt);
     if (s.mode === "train" && train.cars.length) camera(train.cars[0].x, train.cars[0].y);
     else if (s.mode !== "town") camera(player.x, player.y - 8);
+    const showParty = player.visible && s.mode !== "town" && s.mode !== "train";
+    for (const pm of party) pm.sprite.visible = showParty && !tunnels.has(key(...pm.tile));
+    for (const mm of maps) mm.refresh();
   });
   camera(player.x, player.y - 8);
+
+  // ---------------------------------------------------------------- minimap + world map
+  const grid = minimapGrid(data);
+  const maps = [];
+  function drawMap(parent, o, big) {
+    const cell = o.cell ?? (big ? 4 : 2);
+    const c = new PIXI.Container();
+    c.label = big ? "easytilemap-worldmap" : "easytilemap-minimap";
+    c.position.set(o.x ?? 0, o.y ?? 0);
+    const W = grid[0].length * cell, H = grid.length * cell;
+    const bg = new PIXI.Graphics().rect(-2, -2, W + 4, H + 4).fill({ color: 0x1a120b, alpha: 0.85 });
+    const g = new PIXI.Graphics();
+    grid.forEach((row, y) => {
+      for (let x = 0; x < row.length; x++) {
+        const ch = row[x];
+        if (ch === "T" || ch === "S") continue;
+        g.rect(x * cell, y * cell, cell, cell).fill(MINIMAP_COLORS[ch]);
+      }
+    });
+    grid.forEach((row, y) => [...row].forEach((ch, x) => {
+      if (ch === "S") g.rect(x * cell - cell / 2, y * cell - cell / 2, cell * 2, cell * 2).fill(MINIMAP_COLORS.S);
+      if (ch === "T") g.rect(x * cell - cell, y * cell - cell, cell * 3, cell * 3).fill(MINIMAP_COLORS.T).stroke({ color: 0x1a120b, width: 1 });
+    }));
+    const dots = new PIXI.Graphics();
+    c.addChild(bg, g, dots);
+    if (big) {
+      const lang = o.lang ?? "th";
+      for (const t of data.towns) {
+        const label = new PIXI.Text({ text: t.name[lang] ?? t.name.en, style: { fontFamily: o.fontFamily ?? "sans-serif", fontSize: o.fontSize ?? 10, fill: 0xffffff, stroke: { color: 0x1a120b, width: 3 } } });
+        label.anchor.set(0.5, 1);
+        label.position.set(t.entrance[0] * cell + cell / 2, t.entrance[1] * cell - cell * 1.5);
+        c.addChild(label);
+      }
+    }
+    let blink = 0;
+    c.refresh = () => {
+      if (!c.visible) return;
+      blink = (blink + 1) % 40;
+      dots.clear();
+      for (const pm of party) dots.rect(pm.tile[0] * cell, pm.tile[1] * cell, cell, cell).fill(0x7cc8e8);
+      const [px, py] = s.mode === "town" && s.town ? townById.get(s.town).entrance : s.tile;
+      const r = blink < 28 ? cell * 1.5 : cell;
+      dots.rect(px * cell + cell / 2 - r, py * cell + cell / 2 - r, r * 2, r * 2).fill(0xffffff).stroke({ color: 0xcc3a34, width: 1 });
+    };
+    c.toggle = (v = !c.visible) => ((c.visible = v), c.refresh(), c);
+    c.refresh();
+    parent.addChild(c);
+    maps.push(c);
+    c.on("destroyed", () => maps.splice(maps.indexOf(c), 1));
+    return c;
+  }
 
   const game = {
     data,
     map,
+    addFollower,
+    removeFollower,
+    followers: () => party.map((m) => ({ name: m.spec.name ?? "", tile: [...m.tile], facing: m.facing, visible: m.sprite.visible })),
+    minimap: (parent, o = {}) => drawMap(parent, o, false),
+    worldMap: (parent, o = {}) => drawMap(parent, o, true),
+    minimapGrid: () => [...grid],
     state: () => ({
       mode: s.mode,
       tile: [...s.tile],
@@ -535,6 +700,7 @@ export async function startOverworld(PIXI, app, opts) {
       trainCars: train.cars.length,
       hiddenInTunnel: s.hiddenInTunnel,
       menu: s.mode === "menu" ? [...s.menu] : [],
+      followers: party.map((m) => [...m.tile]),
     }),
     step,
     teleport,

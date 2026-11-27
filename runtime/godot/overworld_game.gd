@@ -53,6 +53,11 @@ var tunnel_cells := {}
 var night := false
 var night_glow: Sprite2D
 var day_textures := {}
+## Party followers: [{ node, anim, tile, facing }]; they walk the leader's trail (same rules as party.ts).
+var party: Array = []
+var trail: Array = []
+var follower_spacing := 1
+var _maps: Array = []
 
 func _ready() -> void:
 	data = JSON.parse_string(FileAccess.get_file_as_string("res://overworld/overworld.json"))
@@ -92,6 +97,8 @@ func _ready() -> void:
 	var start: Dictionary = town_by_id.get(data.start, data.towns[0])
 	tile = Vector2i(int(start.entrance[0]), int(start.entrance[1]))
 	_place_player()
+	for spec in data.get("followers", []):
+		add_follower(spec)
 	_show_hud(start)
 	var nd = data.get("night")
 	if nd is Dictionary and nd.get("start", false):
@@ -146,6 +153,8 @@ func set_night(on: bool) -> void:
 		night_glow.visible = on
 	var tint := Color(0.62, 0.66, 0.9) if on else Color(1, 1, 1)
 	player.modulate = tint
+	for m in party:
+		m.node.modulate = tint
 	for car in train_cars:
 		car.modulate = tint
 	night_changed.emit(on)
@@ -167,6 +176,10 @@ func _place_player() -> void:
 	player.position = _feet(tile)
 	player.visible = true
 	_anim("idle")
+	trail.clear()
+	for m in party:
+		m.tile = tile
+		m.node.position = _feet(tile)
 	cam.position = player.position
 	cam.reset_smoothing()
 
@@ -303,8 +316,16 @@ func _process(delta: float) -> void:
 			step(d)
 		else:
 			_anim("idle")
+			for m in party:
+				_follower_anim(m, "idle")
 	elif mode == "train":
 		_advance_train(delta)
+	var show_party := player.visible and mode != "town" and mode != "train"
+	for m in party:
+		m.node.visible = show_party and not tunnel_cells.has(_key(m.tile))
+		m.node.z_index = 0
+	for mm in _maps:
+		_refresh_map(mm)
 	if mode == "overworld" or mode == "menu" or mode == "train":
 		var target: Vector2 = player.position if mode != "train" or train_cars.is_empty() else train_cars[0].position
 		cam.position = target
@@ -339,6 +360,18 @@ func step(d: Vector2i) -> bool:
 		return false
 	moving = true
 	_anim("walk")
+	push_trail(trail, tile, maxi(8, (party.size() + 1) * follower_spacing))
+	var goals := follower_tiles(trail, nt, party.size(), follower_spacing)
+	for i in party.size():
+		var m: Dictionary = party[i]
+		var to: Vector2i = goals[i]
+		if to == m.tile:
+			continue
+		m.facing = facing_toward(m.tile, to, m.facing)
+		_follower_anim(m, "walk")
+		var ftw := create_tween()
+		ftw.tween_property(m.node, "position", _feet(to), STEP_TIME)
+		m.tile = to
 	var tw := create_tween()
 	tw.tween_property(player, "position", _feet(nt), STEP_TIME)
 	tw.finished.connect(func() -> void:
@@ -512,3 +545,130 @@ func _finish_train() -> void:
 	_set_mode("overworld")
 	train_arrived.emit(train_to)
 	await _fade_to(0.0)
+
+
+# ------------------------------------------------------------------ party followers (rules: src/shared/party.ts)
+
+static func push_trail(t: Array, prev: Vector2i, mx: int) -> void:
+	if not t.is_empty() and t[0] == prev:
+		return
+	t.push_front(prev)
+	while t.size() > mx:
+		t.pop_back()
+
+static func follower_tiles(t: Array, leader: Vector2i, n: int, spacing := 1) -> Array:
+	var out: Array = []
+	for i in n:
+		var k := (i + 1) * spacing - 1
+		out.append(t[k] if k < t.size() else (t[t.size() - 1] if not t.is_empty() else leader))
+	return out
+
+static func facing_toward(from: Vector2i, to: Vector2i, fallback := "front") -> String:
+	var d := to - from
+	if d == Vector2i.ZERO:
+		return fallback
+	if absi(d.x) >= absi(d.y):
+		return "right" if d.x > 0 else "left"
+	return "front" if d.y > 0 else "back"
+
+## Add a party member walking behind the player: spec like data.player (image, frameSize, rows, idle, walk, groundRow).
+func add_follower(spec: Dictionary) -> Node2D:
+	var holder := Node2D.new()
+	holder.name = "Follower%d" % party.size()
+	var anim := AnimatedSprite2D.new()
+	anim.sprite_frames = make_frames(spec, ["front", "right", "back", "left"])
+	anim.centered = false
+	anim.offset = Vector2(-int(spec.frameSize) / 2.0, -int(spec.groundRow))
+	holder.add_child(anim)
+	var goals := follower_tiles(trail, tile, party.size() + 1, follower_spacing)
+	var m := {"node": holder, "anim": anim, "tile": goals[party.size()], "facing": "front", "spec": spec}
+	holder.position = _feet(m.tile)
+	holder.modulate = player.modulate
+	world.add_child(holder)
+	party.append(m)
+	_follower_anim(m, "idle")
+	return holder
+
+func remove_follower(i := -1) -> void:
+	if party.is_empty():
+		return
+	var idx := i if i >= 0 else party.size() - 1
+	party[idx].node.queue_free()
+	party.remove_at(idx)
+
+func follower_tiles_now() -> Array:
+	return party.map(func(m): return m.tile)
+
+func _follower_anim(m: Dictionary, kind: String) -> void:
+	var a: AnimatedSprite2D = m.anim
+	var n := "%s_%s" % [kind, m.facing]
+	a.flip_h = m.facing == "left" and not m.spec.rows.has("left")
+	if a.animation != n and a.sprite_frames.has_animation(n):
+		a.play(n)
+
+# ------------------------------------------------------------------ minimap / world map
+
+const MINIMAP_COLORS := {".": Color("#7fbf6a"), "#": Color("#3e5a74"), "=": Color("#a07a52"), "T": Color("#f4ae3d"), "S": Color("#e8604a")}
+
+static func minimap_grid(d: Dictionary) -> PackedStringArray:
+	var g: Array = []
+	for row in d.blocked:
+		var r := ""
+		for ch in str(row):
+			r += "#" if ch == "#" else "."
+		g.append(r)
+	var put := func(c, ch: String) -> void:
+		if c == null:
+			return
+		var x := int(c[0])
+		var y := int(c[1])
+		if y >= 0 and y < g.size() and x >= 0 and x < str(g[y]).length():
+			var r: String = g[y]
+			g[y] = r.substr(0, x) + ch + r.substr(x + 1)
+	for t in d.get("trains", []):
+		for c in t.get("path", []):
+			put.call(c, "=")
+	for t in d.towns:
+		put.call(t.get("station"), "S")
+		put.call(t.entrance, "T")
+	return PackedStringArray(g)
+
+## A minimap (cell px per tile) or, with labels, the world map. Add it to a CanvasLayer; it follows the party.
+func make_minimap(cell := 2, labels := false) -> Control:
+	var grid := minimap_grid(data)
+	var w := grid[0].length()
+	var h := grid.size()
+	var img := Image.create(w * cell, h * cell, false, Image.FORMAT_RGBA8)
+	for y in h:
+		for x in w:
+			img.fill_rect(Rect2i(x * cell, y * cell, cell, cell), MINIMAP_COLORS[grid[y][x]])
+	var root := TextureRect.new()
+	root.name = "WorldMap" if labels else "Minimap"
+	root.texture = ImageTexture.create_from_image(img)
+	root.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if labels:
+		for t in data.towns:
+			var l := _label(10)
+			l.text = str(t.name.th)
+			l.position = Vector2(int(t.entrance[0]) * cell - 20, int(t.entrance[1]) * cell - 18)
+			root.add_child(l)
+	var dot := ColorRect.new()
+	dot.name = "Player"
+	dot.color = Color.WHITE
+	dot.size = Vector2(cell * 2, cell * 2)
+	root.add_child(dot)
+	root.set_meta("cell", cell)
+	_maps.append(root)
+	_refresh_map(root)
+	return root
+
+func _refresh_map(mm: Control) -> void:
+	if not is_instance_valid(mm) or not mm.visible:
+		return
+	var cell := int(mm.get_meta("cell"))
+	var at := tile
+	if mode == "town" and current_town != "":
+		var e = town_by_id[current_town].entrance
+		at = Vector2i(int(e[0]), int(e[1]))
+	(mm.get_node("Player") as ColorRect).position = Vector2(at.x * cell - cell / 2.0, at.y * cell - cell / 2.0)

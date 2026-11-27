@@ -39,6 +39,21 @@ func _process(_delta: float) -> bool:
 			result["towns"] = game.data.towns.size()
 			result["trains"] = game.data.trains.size()
 			result["player_sprite"] = game.player_anim != null
+			# party followers + minimap (rules shared with src/shared/party.ts)
+			var tr: Array = []
+			for c in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(2, 1)]:
+				game.push_trail(tr, c, 8)
+			var ft: Array = game.follower_tiles(tr, Vector2i(2, 2), 4, 1)
+			result["party_rule"] = ft == [Vector2i(2, 1), Vector2i(2, 0), Vector2i(1, 0), Vector2i(0, 0)] and game.facing_toward(Vector2i(1, 1), Vector2i(1, 0)) == "back"
+			if game.data.player != null:
+				game.add_follower(game.data.player)
+				game.add_follower(game.data.player)
+			result["followers"] = game.party.size()
+			var mm: Control = game.make_minimap(2)
+			game.add_child(mm)
+			result["minimap"] = mm.texture.get_width() == int(game.data.width) * 2 and mm.texture.get_height() == int(game.data.height) * 2
+			var grid: PackedStringArray = game.minimap_grid(game.data)
+			result["minimap_towns"] = "".join(grid).count("T")
 			# a town entrance with a walkable neighbour that is not itself a trigger
 			for t in game.data.towns:
 				var e := Vector2i(int(t.entrance[0]), int(t.entrance[1]))

@@ -57,6 +57,10 @@ describe.skipIf(!GODOT)("Godot export", () => {
     expect(result.arrived).toBe(true);
     expect(result.player_sprite).toBe(true);
     expect(result.tunnel_route).toBe(true);
+    expect(result.party_rule).toBe(true);
+    expect(result.followers).toBe(2);
+    expect(result.minimap).toBe(true);
+    expect(result.minimap_towns).toBe(doc.overworld!.towns.length);
     expect(result.hidden_in_tunnel).toBe(true);
     expect(result.night_atlas).toBe(true);
     expect(result.night_glow).toBe(true);
