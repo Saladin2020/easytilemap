@@ -34,7 +34,8 @@ describe.skipIf(!PIXI_JS || !existsSync(PIXI_JS))("PixiJS overworld (headless Ch
       townScenes = path.join(sw, "exports");
     }
     const out = path.join(root, "exports", "pixi-overworld");
-    const res = await exportMap(root, { id: doc.id, preset: "pixi", out, overworld: { townScenes } });
+    const airports = doc.overworld!.towns.slice(0, 2).map((t) => t.id);
+    const res = await exportMap(root, { id: doc.id, preset: "pixi", out, overworld: { townScenes, airports } });
     const data = JSON.parse(await readFile(path.join(out, "overworld", "overworld.json"), "utf8"));
     expect(data.format).toBe("easytilemap.overworld-pixi/1");
     expect(data.tunnels.length).toBeGreaterThan(0);

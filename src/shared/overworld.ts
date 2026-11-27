@@ -246,7 +246,109 @@ export function railPath(doc: Pick<MapDoc, "layers" | "width" | "height">, from:
 }
 
 /** Travel graph for exporters: towns with px positions, train lines between stations with their tile paths. */
-export function travelGraph(doc: MapDoc) {
+/** An airport next to a town: a 6 × 3 tile footprint (runway on top, terminal + gate on the bottom row). */
+export interface OverworldAirport {
+  id: string;
+  town: string;
+  name: LocalName;
+  /** Walkable gate tile the player steps on (Enter: check in / fly). */
+  tile: [number, number];
+  /** Footprint in tiles (top-left x, y, w, h). */
+  rect: { x: number; y: number; w: number; h: number };
+}
+
+export const AIRPORT_W = 6;
+export const AIRPORT_H = 3;
+const AIRPORT_GROUND = new Set(["g", "d", "b", "p"]);
+
+/**
+ * Pick an airport site for each town id: the nearest free 6 × 3 patch of grass / dirt / sand / paddy (no road,
+ * rail, water, station, gate or solid object, not touching another airport) in rings around the town gate.
+ * Deterministic; towns with no room are skipped.
+ */
+export function airportSites(doc: MapDoc, townIds: readonly string[], blocked: boolean[][]): OverworldAirport[] {
+  const ow = doc.overworld;
+  if (!ow) return [];
+  const taken = new Set<string>();
+  for (const t of ow.towns) {
+    taken.add(`${t.entrance[0]},${t.entrance[1]}`);
+    if (t.station) taken.add(`${t.station[0]},${t.station[1]}`);
+  }
+  const out: OverworldAirport[] = [];
+  const free = (x0: number, y0: number) => {
+    for (let y = y0 - 1; y <= y0 + AIRPORT_H; y++) for (let x = x0 - 1; x <= x0 + AIRPORT_W; x++) {
+      if (x < 0 || y < 0 || x >= doc.width || y >= doc.height) return false;
+      const inner = x >= x0 && x < x0 + AIRPORT_W && y >= y0 && y < y0 + AIRPORT_H;
+      if (taken.has(`${x},${y}`)) return false;
+      if (!inner) continue;
+      if (!AIRPORT_GROUND.has(doc.layers.ground[y]?.[x] ?? "")) return false;
+      if (blocked[y]?.[x]) return false;
+    }
+    // the gate must be reachable from the tile below it (or beside the footprint)
+    return true;
+  };
+  for (const id of townIds) {
+    const t = ow.towns.find((x) => x.id === id);
+    if (!t) continue;
+    let best: [number, number] | null = null;
+    for (let r = 2; r <= 14 && !best; r++) {
+      const cands: Array<[number, number, number]> = [];
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const x0 = t.entrance[0] + dx - Math.floor(AIRPORT_W / 2);
+        const y0 = t.entrance[1] + dy - 1;
+        if (free(x0, y0)) cands.push([x0, y0, Math.abs(dx) + Math.abs(dy) * 1.01]);
+      }
+      cands.sort((a, b) => a[2] - b[2] || a[1] - b[1] || a[0] - b[0]);
+      if (cands.length) best = [cands[0]![0], cands[0]![1]];
+    }
+    if (!best) continue;
+    const [x0, y0] = best;
+    for (let y = y0 - 1; y <= y0 + AIRPORT_H; y++) for (let x = x0 - 1; x <= x0 + AIRPORT_W; x++) taken.add(`${x},${y}`);
+    out.push({
+      id: `apt_${t.id}`,
+      town: t.id,
+      name: { th: `ท่าอากาศยาน${t.name.th}`, en: `${t.name.en} Airport`, ...(t.name.ms ? { ms: `Lapangan Terbang ${t.name.ms}` } : {}) },
+      tile: [x0 + 1, y0 + AIRPORT_H - 1],
+      rect: { x: x0, y: y0, w: AIRPORT_W, h: AIRPORT_H },
+    });
+  }
+  return out;
+}
+
+/**
+ * Flood "height" per cell as digit rows: 0 = water, then the 4-connected distance from water (paddy counts one
+ * lower), capped at 9. A flood level L (0..1) covers walkable cells with height ≤ floodReach(L).
+ */
+export function lowlandGrid(doc: Pick<MapDoc, "layers" | "width" | "height">): string[] {
+  const H = doc.height;
+  const W = doc.width;
+  const d: number[][] = Array.from({ length: H }, () => Array(W).fill(99));
+  const q: Array<[number, number]> = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if ((doc.layers.ground[y]?.[x] ?? "") === "w") { d[y]![x] = 0; q.push([x, y]); }
+  for (let i = 0; i < q.length; i++) {
+    const [x, y] = q[i]!;
+    for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]] as const) {
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H || d[ny]![nx]! <= d[y]![x]! + 1) continue;
+      d[ny]![nx] = d[y]![x]! + 1;
+      q.push([nx, ny]);
+    }
+  }
+  return d.map((row, y) => row.map((v, x) => {
+    if (v === 0) return "0";
+    const g = doc.layers.ground[y]?.[x] ?? "";
+    const h = Math.min(9, v === 99 ? 9 : v) - (g === "p" ? 1 : 0) + (g === "M" || g === "s" ? 3 : 0);
+    return String(Math.max(1, Math.min(9, h)));
+  }).join(""));
+}
+
+/** Highest lowland digit a flood level covers (0 = none). Matches easynpc flood stages: puddles .15, ankle .35, knee .6, waist .85. */
+export function floodReach(level: number): number {
+  if (!(level >= 0.15)) return 0;
+  return Math.min(9, Math.floor(1 + (level - 0.15) * 10));
+}
+
+export function travelGraph(doc: MapDoc, opts: { airports?: readonly string[]; blocked?: boolean[][] } = {}) {
   const ow = doc.overworld;
   if (!ow) return null;
   const ts = doc.tileSize;
@@ -266,5 +368,14 @@ export function travelGraph(doc: MapDoc) {
     towns: ow.towns.map((t) => ({ ...t, station: t.station ?? null, entrancePx: [t.entrance[0] * ts + ts / 2, t.entrance[1] * ts + ts / 2], stationPx: t.station ? [t.station[0] * ts + ts / 2, t.station[1] * ts + ts / 2] : null })),
     routes: ow.routes.map(({ path: _p, ...r }) => r),
     trains,
+    ...(airportsOf(doc, opts)),
   };
+}
+
+function airportsOf(doc: MapDoc, opts: { airports?: readonly string[]; blocked?: boolean[][] }) {
+  if (!opts.airports?.length || !opts.blocked) return {};
+  const airports = airportSites(doc, opts.airports, opts.blocked);
+  const flights: Array<{ from: string; to: string }> = [];
+  for (const a of airports) for (const b of airports) if (a !== b) flights.push({ from: a.id, to: b.id });
+  return { airports, flights };
 }

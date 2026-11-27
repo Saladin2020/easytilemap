@@ -25,6 +25,8 @@ export interface OverworldGodotOptions {
   demoTown?: string;
   /** Start at night (N toggles in game either way). */
   night?: boolean;
+  /** Town ids that get an airport next to them (Pixi: flights between them, planes flying over). */
+  airports?: string[];
 }
 
 /** Tunnel cells (the train is hidden while it is inside one). */

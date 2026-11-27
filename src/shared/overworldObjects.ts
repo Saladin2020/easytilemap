@@ -342,3 +342,77 @@ export function trainSheet(): RgbaImage {
   ns(p.view(3 * T, 0, T, T), false);
   return p.img;
 }
+
+/**
+ * Top-down passenger plane facing right (frame 0, 32 × 32) and its ground shadow (frame 1). The runtime scales the
+ * plane up as it climbs and moves the shadow away from it.
+ */
+export function planeSheet(): RgbaImage {
+  const p = new Pix(2 * 32, 32);
+  const body = c("#f4f0e6");
+  const bodySh = c("#cfc8b5");
+  const stripe = c("#2c4590");
+  const tail = c("#e06e1c");
+  const wing = c("#b9c0c8");
+  const wingSh = c("#87919f");
+  const glass = c("#2d4157");
+  const draw = (v: View, col: (k: Rgba) => Rgba) => {
+    // wings (swept back)
+    for (let i = 0; i < 12; i++) {
+      v.hline(13 - Math.floor(i * 0.45), 18 - Math.floor(i * 0.45), 15 - i, col(i > 9 ? wingSh : wing));
+      v.hline(13 - Math.floor(i * 0.45), 18 - Math.floor(i * 0.45), 16 + i, col(i > 9 ? wingSh : wing));
+    }
+    // engines
+    v.rect(15, 9, 4, 2, col(wingSh));
+    v.rect(15, 21, 4, 2, col(wingSh));
+    // tailplane
+    for (let i = 0; i < 5; i++) {
+      v.hline(3 - Math.floor(i * 0.4), 6 - Math.floor(i * 0.4), 15 - i, col(wing));
+      v.hline(3 - Math.floor(i * 0.4), 6 - Math.floor(i * 0.4), 16 + i, col(wing));
+    }
+    // fuselage
+    for (let x = 1; x < 30; x++) {
+      const half = x > 26 ? 29 - x : x < 4 ? 1 : 2;
+      for (let y = 16 - half; y < 16 + half; y++) v.set(x, y, col(y < 15 ? body : bodySh));
+      if (x > 6 && x < 26) v.set(x, 15, col(stripe));
+    }
+    v.rect(1, 14, 3, 4, col(tail));
+    v.set(27, 15, col(glass));
+    v.set(27, 16, col(glass));
+  };
+  draw(p.view(0, 0, 32, 32), (k) => k);
+  p.view(0, 0, 32, 32).outline(INK);
+  draw(p.view(32, 0, 32, 32), () => c("#000000", 90));
+  return p.img;
+}
+
+/** Top-down airport (6 × 3 tiles = 96 × 48): runway with markings on top, terminal with a control tower below. */
+export function airportImage(): RgbaImage {
+  const p = new Pix(96, 48);
+  const v = p.view();
+  const asphalt = [c("#4a4a52"), c("#56565e"), c("#3e3e46")] as const;
+  for (let y = 2; y < 22; y++) for (let x = 0; x < 96; x++) v.set(x, y, shade(noise(x, y, 77), asphalt));
+  v.hline(0, 95, 2, c("#6a6a72"));
+  v.hline(0, 95, 21, c("#2e2e36"));
+  for (let x = 6; x < 90; x += 10) v.hline(x, x + 5, 11, c("#f4f0e6"));
+  for (const tx of [2, 89]) for (let y = 5; y < 19; y += 3) v.hline(tx, tx + 4, y, c("#f4f0e6"));
+  // taxiway to the apron
+  for (let y = 22; y < 30; y++) v.rect(40, y, 8, 1, shade(noise(40, y, 9), asphalt));
+  // apron + terminal
+  v.rect(4, 30, 88, 16, c("#b4aa9a"));
+  v.rect(10, 30, 50, 12, c("#d8dde4"));
+  v.rect(10, 30, 50, 3, c("#4064b4"));
+  for (let x = 12; x < 58; x += 4) v.rect(x, 35, 2, 4, c("#4f7896"));
+  // control tower
+  v.rect(66, 32, 8, 10, c("#cfc8b5"));
+  v.rect(64, 30, 12, 5, c("#4f7896"));
+  v.rect(64, 29, 12, 1, c("#87919f"));
+  // gate (the walkable door on the bottom row, tile x = 1)
+  v.rect(20, 42, 8, 4, c("#6a3e22"));
+  v.rect(21, 43, 6, 3, c("#2d4157"));
+  // windsock
+  v.vline(84, 36, 44, c("#87919f"));
+  v.rect(85, 36, 4, 2, c("#e06e1c"));
+  v.outline(INK);
+  return p.img;
+}

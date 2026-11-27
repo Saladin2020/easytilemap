@@ -160,6 +160,42 @@ async def main():
         await pg.wait_for_function("__ow.state().night === false", timeout=10000)
         out["day_restored"] = True
 
+        # 7. town life (maps exported with --airports): fly between airports, planes fly over, flood slows walking
+        aps = await pg.evaluate("__ow.state().airports")
+        out["airports"] = aps
+        if len(aps) >= 2:
+            await pg.evaluate("(id) => { const a = __ow.data.airports.find((x) => x.id === id); __ow.teleport(a.tile[0], a.tile[1]); }", aps[0])
+            await pg.evaluate("(to) => __ow.fly(to)", aps[1])
+            await pg.wait_for_function("__ow.state().mode === 'flight'", timeout=10000)
+            await pg.wait_for_function("__ow.state().flight && __ow.state().flight.phase === 'cruise' && __ow.state().flight.alt > 0.9", timeout=20000)
+            out["flight_alt"] = (await st())["flight"]["alt"]
+            await pg.locator("canvas").screenshot(path=f"{PREFIX}-flight.png")
+            await pg.wait_for_function("__ow.state().mode === 'overworld'", timeout=60000)
+            dest = await pg.evaluate("(id) => __ow.data.airports.find((x) => x.id === id).tile", aps[1])
+            out["flight_landed"] = (await st())["tile"] == dest
+            out["flyover"] = await pg.evaluate("async () => { await __ow.flyover(); return __ow.state().flyovers; }") >= 1
+            await pg.locator("canvas").screenshot(path=f"{PREFIX}-flyover.png")
+        fl = await pg.evaluate("""() => {
+          __ow.setFlood(0.7);
+          const d = __ow.data; let cell = null;
+          for (let y = 1; y < d.height - 1 && !cell; y++) for (let x = 1; x < d.width - 1 && !cell; x++)
+            if (__ow.floodDepthAt(x, y) >= 2 && d.blocked[y][x] === '.' && d.blocked[y][x + 1] === '.' && __ow.floodDepthAt(x + 1, y) >= 2) cell = [x, y];
+          return { cells: __ow.state().floodedCells, cell };
+        }""")
+        out["flood_cells"] = fl["cells"]
+        if fl["cell"]:
+            x, y = fl["cell"]
+            await pg.evaluate(f"__ow.teleport({x}, {y})")
+            t0 = await pg.evaluate("performance.now()")
+            await pg.evaluate("__ow.step(1, 0)")
+            await pg.wait_for_function(f"__ow.state().tile[0] === {x + 1} && !__ow.state().paused", timeout=5000)
+            out["flood_step_ms"] = round(await pg.evaluate("performance.now()") - t0)
+            out["flood_depth_here"] = (await st())["floodDepth"]
+            await pg.locator("canvas").screenshot(path=f"{PREFIX}-flood.png")
+        await pg.evaluate("__ow.setFlood(0)")
+        out["flood_cleared"] = (await st())["floodedCells"] == 0
+        out["paused_blocks_steps"] = await pg.evaluate("() => { __ow.setPaused(true); const moved = __ow.step(1, 0); const p = __ow.state().paused; __ow.setPaused(false); return p && !moved; }")
+
         optional_404 = all(u.endswith("/pixi.min.js") for u in missing)
         real = [e for e in errs if "GL Driver Message" not in e and not (optional_404 and "404" in e)]
         out["errors"] = real
@@ -173,6 +209,9 @@ async def main():
         and (out["hidden_in_tunnel"] or not out["tunnel_route"]) and out["night_darker"] and not out["errors"] and not out["missing"]
         and out["town_x_kept"] and out["town_day_after_n"]
         and (not out["town_night_export"] or (out["town_night_on_enter"] and out["town_night_after_n"]))
+        and (len(out["airports"]) < 2 or (out["flight_landed"] and out["flyover"] and out["flight_alt"] > 0.5))
+        and out["flood_cleared"] and out["paused_blocks_steps"]
+        and (out["flood_cells"] > 0 or not out.get("flood_step_ms"))
     )
     print("RESULT " + json.dumps(out, ensure_ascii=False) + (" OK" if ok else " FAIL"))
     return ok

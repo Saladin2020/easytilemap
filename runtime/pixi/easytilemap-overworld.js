@@ -14,6 +14,13 @@
 //   game.rideTrain(toId) · game.setNight(on) · game.on(event, fn)   (events: town_entered, town_left, train_arrived, night, step)
 //   await game.addFollower(spec) · game.removeFollower(i)   party members walk the leader's trail (opts.followers too)
 //   game.minimap(parent, { x, y, cell }) · game.worldMap(parent, { cell, lang })   live player / follower dots
+// Town life (overworld.json `airports`, `flights`, `lowland`; all optional):
+//   airport gate + Enter  pick a destination, the plane taxis, takes off, flies over the map and lands
+//   opts.onStation(townId, game) / opts.onAirport(airport, game)   replace the Enter menus (e.g. walk into a
+//                       station hall and buy a ticket first, then call game.rideTrain(to) / game.fly(to))
+//   game.setPaused(on)  freeze the map while a game overlay (station hall, shop) is open
+//   game.fly(toAirportId) · game.flyover() · game.setFlood(level 0..1) · game.floodDepthAt(x, y)
+//   events: station, airport, flight_departed, flight_landed, flood
 import { loadTilemap } from "./easytilemap-pixi.js";
 
 const STEP_TIME = 0.16;
@@ -21,6 +28,15 @@ const TRAIN_SPEED = 120;
 const CAR_GAP = 15;
 const TOWN_SPEED = 72;
 const NIGHT_TINT = 0x9ea8e6;
+const FLY_SPEED = 170;
+const ROLL_TIME = 1.6;
+/** Highest lowland digit a flood level covers (same as floodReach in src/shared/overworld.ts). */
+export function floodReach(level) {
+  if (!(level >= 0.15)) return 0;
+  return Math.min(9, Math.floor(1 + (level - 0.15) * 10));
+}
+/** Walk-speed factor in flood water of a given depth (1 = dry). */
+export const floodWalk = (depth) => (depth <= 0 ? 1 : depth === 1 ? 0.8 : depth === 2 ? 0.65 : 0.5);
 
 // ---- party + minimap rules (same as src/shared/party.ts and overworld_game.gd) ----
 export function pushTrail(trail, prev, max) {
@@ -81,6 +97,8 @@ export async function startOverworld(PIXI, app, opts) {
   const entrance = new Map(data.towns.map((t) => [key(...t.entrance), t.id]));
   const station = new Map(data.towns.filter((t) => t.station).map((t) => [key(...t.station), t.id]));
   const tunnels = new Set((data.tunnels ?? []).map(([x, y]) => key(x, y)));
+  const airports = new Map((data.airports ?? []).map((a) => [key(...a.tile), a]));
+  const airportById = new Map((data.airports ?? []).map((a) => [a.id, a]));
   const blocked = (x, y) => y < 0 || x < 0 || y >= data.blocked.length || x >= data.blocked[0].length || data.blocked[y][x] === "#";
 
   // ---------------------------------------------------------------- player
@@ -248,7 +266,7 @@ export async function startOverworld(PIXI, app, opts) {
     }
     const [fx, fy] = feet(...s.tile);
     const [tx, ty] = feet(nx, ny);
-    s.move = { fx, fy, tx, ty, t: 0, to: [nx, ny] };
+    s.move = { fx, fy, tx, ty, t: 0, to: [nx, ny], dur: STEP_TIME / floodWalk(floodDepthAt(nx, ny)) };
     setAnim("walk", f);
     pushTrail(trail, s.tile, Math.max(8, (party.length + 1) * spacing));
     const goals = followerTiles(trail, [nx, ny], party.length, spacing);
@@ -268,7 +286,12 @@ export async function startOverworld(PIXI, app, opts) {
     if (entrance.has(k)) enterTown(entrance.get(k));
     else if (station.has(k)) {
       const t = townById.get(station.get(k));
-      setHud(`${title(t)}\n${region(t.region)}`, `สถานี ${t.name.th} · ${t.name.en} station — Enter: ride the train`);
+      setHud(`${title(t)}\n${region(t.region)}`, opts.onStation ? `สถานี ${t.name.th} · ${t.name.en} station — Enter: go in` : `สถานี ${t.name.th} · ${t.name.en} station — Enter: ride the train`);
+      emit("station", t.id);
+    } else if (airports.has(k)) {
+      const a = airports.get(k);
+      setHud(`${a.name.th} · ${a.name.en}`, opts.onAirport ? "Enter: go in · เข้าอาคาร" : "Enter: fly · บิน");
+      emit("airport", a.id);
     } else if (s.mode === "overworld") setHud(hud ? hud.querySelector(".ow-top").textContent : "", "");
   }
   function teleport(x, y, f = "front") {
@@ -326,7 +349,7 @@ export async function startOverworld(PIXI, app, opts) {
     }
     const old = town.scene;
     town.root.addChildAt(next.root, 0);
-    (next.charLayers?.main ?? next.world).addChild(town.holder);
+    placeHolders(next, town);
     town.scene = next;
     town.sceneJson = want;
     town.root.removeChild(old.root);
@@ -334,6 +357,14 @@ export async function startOverworld(PIXI, app, opts) {
     next.setCamera(town.camX ?? 0);
   }
 
+  // Town life: the player stands in front of stall / counter fronts (Easy Scene counterFronts); `town.npcs` (behind
+  // them, in charLayers.main) is for game NPCs such as a seller behind the stall, kept across day / night swaps.
+  function placeHolders(scene, town) {
+    const main = scene.charLayers?.main ?? scene.world;
+    main.addChild(town.npcs);
+    if (scene.counterFronts?.parent) scene.world.addChildAt(town.holder, scene.world.getChildIndex(scene.counterFronts) + 1);
+    else main.addChild(town.holder);
+  }
   function makeTown(t, scene) {
     const root = new PIXI.Container();
     let width = 960;
@@ -363,10 +394,12 @@ export async function startOverworld(PIXI, app, opts) {
       root.addChild(new PIXI.Graphics().rect(0, 0, width, vh).fill(0x6aa0d8).rect(0, vh - 3 * ts, width, 3 * ts).fill(0x8a6440));
     }
     const holder = new PIXI.Container();
-    if (scene) (scene.charLayers?.main ?? scene.world).addChild(holder);
-    else root.addChild(holder);
+    const npcs = new PIXI.Container();
+    npcs.label = "town-npcs";
     const info = data.townScenes?.[t.scene] ?? null;
-    const town = { root, x: 24, dir: "right", width, scene, holder, sprite: null, exitL, exitR, exiting: false };
+    const town = { root, x: 24, dir: "right", width, scene, holder, npcs, sprite: null, exitL, exitR, exiting: false };
+    if (scene) placeHolders(scene, town);
+    else root.addChild(npcs, holder);
     town.sceneJson = scene && info ? (s.night && info.night ? info.night : info.json) : null;
     town.ready = (async () => {
       if (data.sidePlayer) {
@@ -396,7 +429,7 @@ export async function startOverworld(PIXI, app, opts) {
       let d = s.townDir || (k.has("arrowright") || k.has("d") ? 1 : 0) - (k.has("arrowleft") || k.has("a") ? 1 : 0);
       if (d) {
         town.dir = d > 0 ? "right" : "left";
-        town.x += d * TOWN_SPEED * dt;
+        town.x += d * TOWN_SPEED * townSpeed * dt;
         town.anim("walk");
       } else town.anim("idle");
       if (!exitL) town.x = Math.max(8, town.x);
@@ -420,6 +453,7 @@ export async function startOverworld(PIXI, app, opts) {
     s.townDir = 0;
     s.mode = "fading";
     await fadeTo(1);
+    s.townScene.npcs.removeChildren(); // game-owned NPC sprites survive the street (re-added on the next town)
     s.townScene.root.destroy({ children: true });
     s.townScene = null;
     map.view.visible = true;
@@ -444,11 +478,25 @@ export async function startOverworld(PIXI, app, opts) {
       return false;
     }
     s.menuIndex = 0;
+    s.menuKind = "train";
     s.mode = "menu";
     showMenu();
     return true;
   }
-  const showMenu = () => setHud(hud ? hud.querySelector(".ow-top").textContent : "", `รถไฟไป · Train to: ◀ ${title(townById.get(s.menu[s.menuIndex]))} ▶   Enter: ride · Esc: cancel`);
+  const flightsFrom = (id) => (data.flights ?? []).filter((f) => f.from === id).map((f) => f.to);
+  function openFlightMenu() {
+    const here = airports.get(key(...s.tile));
+    s.menu = here ? flightsFrom(here.id) : [];
+    if (!s.menu.length) return false;
+    s.menuIndex = 0;
+    s.menuKind = "flight";
+    s.mode = "menu";
+    showMenu();
+    return true;
+  }
+  const showMenu = () => setHud(hud ? hud.querySelector(".ow-top").textContent : "", s.menuKind === "flight"
+    ? `บินไป · Fly to: ◀ ${airportById.get(s.menu[s.menuIndex]).name.th} · ${airportById.get(s.menu[s.menuIndex]).name.en} ▶   Enter: fly · Esc: cancel`
+    : `รถไฟไป · Train to: ◀ ${title(townById.get(s.menu[s.menuIndex]))} ▶   Enter: ride · Esc: cancel`);
   async function rideTrain(to) {
     const here = station.get(key(...s.tile));
     const route = data.trains.find((tr) => tr.from === here && tr.to === to);
@@ -555,10 +603,242 @@ export async function startOverworld(PIXI, app, opts) {
     player.tint = tint;
     party.forEach((m) => (m.sprite.tint = tint));
     train.cars.forEach((c) => (c.tint = tint));
+    airportSprites.forEach((a) => (a.tint = tint));
+    if (flight) flight.plane.tint = tint;
     if (s.townScene?.sprite) s.townScene.sprite.tint = tint;
     if (s.mode === "town") await swapStreet(on);
     emit("night", on);
     return true;
+  }
+
+  // ---------------------------------------------------------------- town life: pause, airports + flights, flyovers, flood
+  let townSpeed = 1;
+  /** Town walking speed factor (e.g. Easy NPC floodEffects(level).walk). */
+  const setTownSpeed = (f) => (townSpeed = Math.max(0.1, Math.min(2, Number(f) || 1)));
+  function setPaused(on) {
+    if (on && s.mode !== "paused") {
+      s.pausedFrom = s.mode;
+      s.mode = "paused";
+      s.keys.clear();
+      setAnim("idle");
+    } else if (!on && s.mode === "paused") s.mode = s.pausedFrom ?? "overworld";
+    return s.mode;
+  }
+  const airportSprites = [];
+  if (data.airport && airportById.size) {
+    const at = await load(data.airport);
+    for (const a of airportById.values()) {
+      const sp = new PIXI.Sprite(at);
+      sp.label = `airport:${a.id}`;
+      sp.position.set(a.rect.x * ts, a.rect.y * ts);
+      map.view.addChildAt(sp, Math.min(2, map.view.children.length));
+      airportSprites.push(sp);
+    }
+  }
+  let planeTex = null;
+  const planeSprites = async () => {
+    if (!planeTex) {
+      const src = (await load(data.plane)).source;
+      planeTex = [0, 32].map((x) => new PIXI.Texture({ source: src, frame: new PIXI.Rectangle(x, 0, 32, 32) }));
+    }
+    const shadow = new PIXI.Sprite(planeTex[1]);
+    const plane = new PIXI.Sprite(planeTex[0]);
+    for (const sp of [shadow, plane]) sp.anchor.set(0.5);
+    shadow.zIndex = 1e6 - 1;
+    plane.zIndex = 1e6 + 1;
+    if (s.night) plane.tint = NIGHT_TINT;
+    map.world.addChild(shadow, plane);
+    return { plane, shadow };
+  };
+  const placePlane = (o, x, y, alt, ang) => {
+    o.plane.position.set(x, y - alt * 22);
+    o.plane.rotation = ang;
+    o.plane.scale.set(0.75 + alt * 0.55);
+    o.shadow.position.set(x + alt * 10, y + 2);
+    o.shadow.rotation = ang;
+    o.shadow.scale.set(0.75);
+    o.shadow.alpha = 1 - alt * 0.45;
+  };
+  let flight = null;
+  async function fly(to, from) {
+    const A = airportById.get(from ?? airports.get(key(...s.tile))?.id);
+    const B = airportById.get(to);
+    if (!A || !B || A === B || !data.plane || (s.mode !== "overworld" && s.mode !== "menu" && s.mode !== "paused")) return false;
+    s.mode = "fading";
+    await fadeTo(1);
+    const o = await planeSprites();
+    const run = (a) => ({ y: (a.rect.y + 0.7) * ts, x0: a.rect.x * ts + 6, x1: (a.rect.x + a.rect.w) * ts - 6 });
+    const ra = run(A);
+    const rb = run(B);
+    const cruise = Math.hypot(rb.x0 - ra.x1, rb.y - ra.y);
+    flight = { A, B, ...o, ra, rb, t: 0, phase: "takeoff", alt: 0, cruiseTime: Math.max(3, cruise / FLY_SPEED) };
+    player.visible = false;
+    advanceFlight(0);
+    setHud(`✈ ${A.name.th} → ${B.name.th}`, `${A.name.en} → ${B.name.en}`);
+    s.mode = "flight";
+    emit("flight_departed", { from: A.id, to: B.id });
+    await fadeTo(0, 0.25);
+    return true;
+  }
+  const ease = (x) => x * x * (3 - 2 * x);
+  function advanceFlight(dt) {
+    const f = flight;
+    if (!f) return;
+    f.t += dt;
+    const { ra, rb } = f;
+    let x, y, ang;
+    if (f.t < ROLL_TIME) {
+      // ground roll + rotate: accelerate along the runway, lift off in the last third
+      const u = f.t / ROLL_TIME;
+      x = ra.x0 + (ra.x1 - ra.x0) * u * u;
+      y = ra.y;
+      ang = 0;
+      f.alt = Math.max(0, (u - 0.66) / 0.34) * 0.35;
+      f.phase = "takeoff";
+    } else if (f.t < ROLL_TIME + f.cruiseTime) {
+      const u = (f.t - ROLL_TIME) / f.cruiseTime;
+      x = ra.x1 + (rb.x0 - ra.x1) * u;
+      y = ra.y + (rb.y - ra.y) * u;
+      ang = Math.atan2(rb.y - ra.y, rb.x0 - ra.x1);
+      f.alt = u < 0.2 ? 0.35 + 0.65 * ease(u / 0.2) : u > 0.8 ? 0.15 + 0.85 * ease((1 - u) / 0.2) : 1;
+      f.phase = u > 0.8 ? "landing" : "cruise";
+    } else {
+      const u = Math.min(1, (f.t - ROLL_TIME - f.cruiseTime) / ROLL_TIME);
+      x = rb.x0 + (rb.x1 - rb.x0) * (1 - (1 - u) * (1 - u));
+      y = rb.y;
+      ang = 0;
+      f.alt = Math.max(0, 0.15 * (1 - u * 3));
+      f.phase = "landing";
+      if (u >= 1 && s.mode === "flight") finishFlight();
+    }
+    placePlane(f, x, y, f.alt, ang);
+  }
+  async function finishFlight() {
+    s.mode = "fading";
+    await fadeTo(1);
+    const B = flight.B;
+    flight.plane.destroy();
+    flight.shadow.destroy();
+    flight = null;
+    player.visible = true;
+    teleport(...B.tile, "front");
+    setHud(`${B.name.th} · ${B.name.en}`);
+    s.mode = "overworld";
+    emit("flight_landed", B.id);
+    await fadeTo(0);
+  }
+  // ambient planes crossing the view (only on maps with airports)
+  const flyovers = [];
+  let nextFlyover = 6;
+  async function flyover() {
+    if (!data.plane) return null;
+    const o = await planeSprites();
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const cx = player.x;
+    const cy = player.y;
+    const m = { ...o, x: cx - dir * (vw / 2 + 40), y: cy - vh * (0.15 + Math.random() * 0.35) + vh * 0.25, dir, life: (vw + 80) / 95 };
+    o.plane.scale.x = 1;
+    flyovers.push(m);
+    return m;
+  }
+  // flood: water over low walkable cells (overworld.json `lowland` digits)
+  const lowland = data.lowland ?? null;
+  let floodLevel = 0;
+  let floodedCells = 0;
+  let floodG = null;
+  let glintG = null;
+  let ripple = null;
+  let glintT = 0;
+  function floodDepthAt(x, y) {
+    if (!lowland || floodLevel < 0.15) return 0;
+    const h = Number(lowland[y]?.[x]);
+    if (!(h > 0) || blocked(x, y)) return 0;
+    const r = floodReach(floodLevel);
+    return h <= r ? r - h + 1 : 0;
+  }
+  function setFlood(level) {
+    level = Math.max(0, Math.min(1, Number(level) || 0));
+    if (Math.abs(level - floodLevel) < 1e-3 && floodG) return floodLevel;
+    floodLevel = level;
+    if (!floodG) {
+      floodG = new PIXI.Graphics();
+      floodG.label = "easytilemap-flood";
+      glintG = new PIXI.Graphics();
+      map.view.addChildAt(glintG, Math.min(2, map.view.children.length));
+      map.view.addChildAt(floodG, Math.min(2, map.view.children.length));
+      ripple = new PIXI.Graphics();
+      ripple.zIndex = -1;
+      map.world.addChild(ripple);
+    }
+    floodG.clear();
+    floodedCells = 0;
+    if (lowland && floodLevel >= 0.15) {
+      for (let y = 0; y < data.height; y++) for (let x = 0; x < data.width; x++) {
+        const d = floodDepthAt(x, y);
+        if (!d) continue;
+        floodedCells++;
+        floodG.rect(x * ts, y * ts, ts, ts).fill({ color: d >= 3 ? 0x3d6c9e : 0x4f86b8, alpha: Math.min(0.78, 0.34 + d * 0.09) });
+      }
+      // light foam line where the water meets dry land
+      for (let y = 0; y < data.height; y++) for (let x = 0; x < data.width; x++) {
+        if (!floodDepthAt(x, y)) continue;
+        const dry = (nx, ny) => !floodDepthAt(nx, ny) && !blocked(nx, ny);
+        if (dry(x, y - 1)) floodG.rect(x * ts, y * ts, ts, 1).fill({ color: 0xd8f0fa, alpha: 0.8 });
+        if (dry(x, y + 1)) floodG.rect(x * ts, y * ts + ts - 1, ts, 1).fill({ color: 0xd8f0fa, alpha: 0.6 });
+        if (dry(x - 1, y)) floodG.rect(x * ts, y * ts, 1, ts).fill({ color: 0xd8f0fa, alpha: 0.6 });
+        if (dry(x + 1, y)) floodG.rect(x * ts + ts - 1, y * ts, 1, ts).fill({ color: 0xd8f0fa, alpha: 0.6 });
+      }
+    }
+    drawGlints();
+    emit("flood", floodLevel);
+    return floodLevel;
+  }
+  function drawGlints() {
+    if (!glintG) return;
+    glintG.clear();
+    if (!floodedCells) return;
+    const phase = Math.floor(glintT * 2.5);
+    for (let y = 0; y < data.height; y++) for (let x = 0; x < data.width; x++) {
+      if (!floodDepthAt(x, y)) continue;
+      const h = ((x * 73856093) ^ (y * 19349663) ^ (phase * 83492791)) >>> 0;
+      if (h % 9) continue;
+      glintG.rect(x * ts + (h >> 4) % 12, y * ts + (h >> 8) % 13, 3, 1).fill({ color: 0xffffff, alpha: 0.7 });
+    }
+    glintG.alpha = s.night ? 0.5 : 1;
+  }
+  function tickTownLife(dt) {
+    if (floodedCells) {
+      const before = Math.floor(glintT * 2.5);
+      glintT += dt;
+      if (Math.floor(glintT * 2.5) !== before) drawGlints();
+      const d = player.visible && s.mode !== "town" ? floodDepthAt(...s.tile) : 0;
+      ripple.clear();
+      if (d) {
+        const r = 5 + Math.sin(glintT * 6) * 1.5;
+        ripple.ellipse(player.x, player.y, r + 2, r * 0.45).stroke({ color: 0xe6f6ff, width: 1, alpha: 0.8 });
+        ripple.zIndex = player.y - 1;
+      }
+    }
+    if (data.plane && opts.flyovers !== false && s.mode === "overworld") {
+      nextFlyover -= dt;
+      if (nextFlyover <= 0) {
+        nextFlyover = 14 + Math.random() * 10;
+        flyover();
+      }
+    }
+    for (let i = flyovers.length - 1; i >= 0; i--) {
+      const m = flyovers[i];
+      m.x += m.dir * 95 * dt;
+      m.life -= dt;
+      placePlane(m, m.x, m.y, 1, m.dir > 0 ? 0 : Math.PI);
+      m.plane.tint = s.night ? NIGHT_TINT : 0xffffff;
+      m.plane.visible = m.shadow.visible = s.mode !== "town";
+      if (m.life <= 0) {
+        m.plane.destroy();
+        m.shadow.destroy();
+        flyovers.splice(i, 1);
+      }
+    }
   }
 
   // ---------------------------------------------------------------- input + loop
@@ -569,11 +849,17 @@ export async function startOverworld(PIXI, app, opts) {
     if (e.repeat && (k === "enter" || k === "escape" || k === "n")) return;
     s.keys.add(k);
     if (k === "n" && s.mode !== "fading") setNight(!s.night);
-    else if (s.mode === "overworld" && !s.move && k === "enter" && station.has(key(...s.tile))) openMenu();
+    else if (s.mode === "overworld" && !s.move && k === "enter" && station.has(key(...s.tile))) {
+      if (opts.onStation) opts.onStation(station.get(key(...s.tile)), game);
+      else openMenu();
+    } else if (s.mode === "overworld" && !s.move && k === "enter" && airports.has(key(...s.tile))) {
+      if (opts.onAirport) opts.onAirport(airports.get(key(...s.tile)), game);
+      else openFlightMenu();
+    }
     else if (s.mode === "menu") {
       if (k === "arrowleft" || k === "arrowup") s.menuIndex = (s.menuIndex - 1 + s.menu.length) % s.menu.length, showMenu();
       else if (k === "arrowright" || k === "arrowdown") s.menuIndex = (s.menuIndex + 1) % s.menu.length, showMenu();
-      else if (k === "enter") rideTrain(s.menu[s.menuIndex]);
+      else if (k === "enter") (s.menuKind === "flight" ? fly(s.menu[s.menuIndex]) : rideTrain(s.menu[s.menuIndex]));
       else if (k === "escape") s.mode = "overworld", setHud(hud ? hud.querySelector(".ow-top").textContent : "", "");
     } else if (s.mode === "town" && k === "escape") leaveTown();
   });
@@ -594,7 +880,7 @@ export async function startOverworld(PIXI, app, opts) {
     if (s.mode === "overworld") {
       if (s.move) {
         const m = s.move;
-        m.t += dt / STEP_TIME;
+        m.t += dt / (m.dur ?? STEP_TIME);
         const f = Math.min(1, m.t);
         player.position.set(m.fx + (m.tx - m.fx) * f, m.fy + (m.ty - m.fy) * f);
         player.zIndex = player.y;
@@ -619,12 +905,15 @@ export async function startOverworld(PIXI, app, opts) {
         }
       }
     } else if (s.mode === "train") advanceTrain(dt);
+    else if (s.mode === "flight") advanceFlight(dt);
     else if (s.mode === "town" && s.townScene) s.townScene.update(dt);
-    if (s.mode === "train" && train.cars.length) camera(train.cars[0].x, train.cars[0].y);
+    if (s.mode === "flight" && flight) camera(flight.plane.x, flight.plane.y);
+    else if (s.mode === "train" && train.cars.length) camera(train.cars[0].x, train.cars[0].y);
     else if (s.mode !== "town") camera(player.x, player.y - 8);
     const showParty = player.visible && s.mode !== "town" && s.mode !== "train";
     for (const pm of party) pm.sprite.visible = showParty && !tunnels.has(key(...pm.tile));
     for (const mm of maps) mm.refresh();
+    tickTownLife(dt);
   });
   camera(player.x, player.y - 8);
 
@@ -701,6 +990,13 @@ export async function startOverworld(PIXI, app, opts) {
       hiddenInTunnel: s.hiddenInTunnel,
       menu: s.mode === "menu" ? [...s.menu] : [],
       followers: party.map((m) => [...m.tile]),
+      airports: [...airportById.keys()],
+      flight: flight ? { from: flight.A.id, to: flight.B.id, phase: flight.phase, alt: +flight.alt.toFixed(2) } : null,
+      flyovers: flyovers.length,
+      flood: floodLevel,
+      floodDepth: floodDepthAt(...s.tile),
+      floodedCells,
+      paused: s.mode === "paused",
     }),
     step,
     teleport,
@@ -711,6 +1007,18 @@ export async function startOverworld(PIXI, app, opts) {
     openMenu,
     rideTrain,
     trainsFrom,
+    fly,
+    flightsFrom,
+    openFlightMenu,
+    flyover,
+    setFlood,
+    floodDepthAt,
+    setPaused,
+    setTownSpeed,
+    /** The loaded Easy Scene street (loadEasyScene result: shops, setShopOpen, counterFronts …) or null. */
+    townScene: () => s.townScene?.scene ?? null,
+    /** Container in the street world (behind stall / counter fronts) for game NPCs; null outside towns. */
+    townNpcLayer: () => s.townScene?.npcs ?? null,
     setNight,
     on: (ev, fn) => ((listeners[ev] ??= []).push(fn), game),
   };
