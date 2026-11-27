@@ -70,7 +70,7 @@ describe("backward compatibility with maps from before the overworld work", () =
     expect(bundle.atlas.rows).toBe(autotile.ATLAS_ROWS);
     delete bundle.atlas.rows;
     expect(sha(JSON.stringify(bundle))).toBe(g.bundle);
-    const files = async (d: string) => (await readdir(d, { recursive: true, withFileTypes: true })).filter((e) => e.isFile()).map((e) => path.relative(d, path.join(e.parentPath, e.name))).sort();
+    const files = async (d: string) => (await readdir(d, { recursive: true, withFileTypes: true })).filter((e) => e.isFile()).map((e) => path.relative(d, path.join(e.parentPath, e.name)).split(path.sep).join("/")).sort();
     // same files: no overworld game, night PNG or scene.json for plain maps
     expect(await files(gd)).toEqual(g.godotFiles);
     expect(await files(px)).toEqual(g.pixiFiles);
