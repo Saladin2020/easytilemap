@@ -58,6 +58,33 @@ describe("airports", () => {
   });
 });
 
+describe("plane facing (DSK-6)", () => {
+  it("the top-down plane is drawn nose-right, so rotation 0 means flying +x", () => {
+    const p = planeSheet();
+    // cockpit glass (#2d4157) sits in the nose; the orange tail at the other end
+    let glass = 0, tail = 0, ng = 0, nt = 0;
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
+      const i = (y * p.width + x) * 4;
+      const [r, g, b] = [p.data[i]!, p.data[i + 1]!, p.data[i + 2]!];
+      if (r === 0x2d && g === 0x41 && b === 0x57) { glass += x; ng++; }
+      if (r === 0xe0 && g === 0x6e && b === 0x1c) { tail += x; nt++; }
+    }
+    expect(ng).toBeGreaterThan(0);
+    expect(nt).toBeGreaterThan(0);
+    expect(glass / ng).toBeGreaterThan(16);
+    expect(tail / nt).toBeLessThan(16);
+  });
+
+  it("the Pixi runtime points flights and both flyover directions along their travel", async () => {
+    const src = await readFile(path.join(__dirname, "..", "runtime", "pixi", "easytilemap-overworld.js"), "utf8");
+    // flyovers: rotation 0 moving right, PI moving left (never a bare scale flip)
+    expect(src).toMatch(/placePlane\(m, m\.x, m\.y, 1, m\.dir > 0 \? 0 : Math\.PI\)/);
+    expect(src).toMatch(/m\.x \+= m\.dir \* /);
+    // cruise heading follows the A → B vector
+    expect(src).toMatch(/ang = Math\.atan2\(rb\.y - ra\.y, rb\.x0 - ra\.x1\)/);
+  });
+});
+
 describe("flood lowland", () => {
   it("water is 0, cells rise with distance from water, paddy sits lower", () => {
     const g = lowlandGrid(doc);
