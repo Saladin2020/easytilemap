@@ -358,4 +358,7 @@ See [CREDITS.md](CREDITS.md). Code: MIT © Salahuddin Benno.
 - `opts.onStation(townId, game)` / `opts.onAirport(airport, game)` replace the Enter menus so a game can walk the player
   into a station hall / terminal first (buy a ticket, wait on the platform) and then call `game.rideTrain(to)` /
   `game.fly(to)`; `game.setPaused(on)` freezes the map while such an overlay is open.
+  Side-view streets: `game.townScene()` (the Easy Scene loader result: `shops`, `setShopOpen`, `counterFronts`),
+  `game.townNpcLayer()` (put game NPCs here: behind stall / counter fronts, kept across day / night swaps),
+  `game.setTownSpeed(f)` (e.g. Easy NPC `floodEffects(level).walk`). The street player stands in front of counter fronts.
 - The Godot overworld export is unchanged (no airports / flood yet).
