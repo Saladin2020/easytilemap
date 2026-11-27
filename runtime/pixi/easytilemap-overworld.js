@@ -349,7 +349,7 @@ export async function startOverworld(PIXI, app, opts) {
     }
     const old = town.scene;
     town.root.addChildAt(next.root, 0);
-    (next.charLayers?.main ?? next.world).addChild(town.holder);
+    placeHolders(next, town);
     town.scene = next;
     town.sceneJson = want;
     town.root.removeChild(old.root);
@@ -357,6 +357,14 @@ export async function startOverworld(PIXI, app, opts) {
     next.setCamera(town.camX ?? 0);
   }
 
+  // Town life: the player stands in front of stall / counter fronts (Easy Scene counterFronts); `town.npcs` (behind
+  // them, in charLayers.main) is for game NPCs such as a seller behind the stall, kept across day / night swaps.
+  function placeHolders(scene, town) {
+    const main = scene.charLayers?.main ?? scene.world;
+    main.addChild(town.npcs);
+    if (scene.counterFronts?.parent) scene.world.addChildAt(town.holder, scene.world.getChildIndex(scene.counterFronts) + 1);
+    else main.addChild(town.holder);
+  }
   function makeTown(t, scene) {
     const root = new PIXI.Container();
     let width = 960;
@@ -386,10 +394,12 @@ export async function startOverworld(PIXI, app, opts) {
       root.addChild(new PIXI.Graphics().rect(0, 0, width, vh).fill(0x6aa0d8).rect(0, vh - 3 * ts, width, 3 * ts).fill(0x8a6440));
     }
     const holder = new PIXI.Container();
-    if (scene) (scene.charLayers?.main ?? scene.world).addChild(holder);
-    else root.addChild(holder);
+    const npcs = new PIXI.Container();
+    npcs.label = "town-npcs";
     const info = data.townScenes?.[t.scene] ?? null;
-    const town = { root, x: 24, dir: "right", width, scene, holder, sprite: null, exitL, exitR, exiting: false };
+    const town = { root, x: 24, dir: "right", width, scene, holder, npcs, sprite: null, exitL, exitR, exiting: false };
+    if (scene) placeHolders(scene, town);
+    else root.addChild(npcs, holder);
     town.sceneJson = scene && info ? (s.night && info.night ? info.night : info.json) : null;
     town.ready = (async () => {
       if (data.sidePlayer) {
@@ -419,7 +429,7 @@ export async function startOverworld(PIXI, app, opts) {
       let d = s.townDir || (k.has("arrowright") || k.has("d") ? 1 : 0) - (k.has("arrowleft") || k.has("a") ? 1 : 0);
       if (d) {
         town.dir = d > 0 ? "right" : "left";
-        town.x += d * TOWN_SPEED * dt;
+        town.x += d * TOWN_SPEED * townSpeed * dt;
         town.anim("walk");
       } else town.anim("idle");
       if (!exitL) town.x = Math.max(8, town.x);
@@ -443,6 +453,7 @@ export async function startOverworld(PIXI, app, opts) {
     s.townDir = 0;
     s.mode = "fading";
     await fadeTo(1);
+    s.townScene.npcs.removeChildren(); // game-owned NPC sprites survive the street (re-added on the next town)
     s.townScene.root.destroy({ children: true });
     s.townScene = null;
     map.view.visible = true;
@@ -601,6 +612,9 @@ export async function startOverworld(PIXI, app, opts) {
   }
 
   // ---------------------------------------------------------------- town life: pause, airports + flights, flyovers, flood
+  let townSpeed = 1;
+  /** Town walking speed factor (e.g. Easy NPC floodEffects(level).walk). */
+  const setTownSpeed = (f) => (townSpeed = Math.max(0.1, Math.min(2, Number(f) || 1)));
   function setPaused(on) {
     if (on && s.mode !== "paused") {
       s.pausedFrom = s.mode;
@@ -1000,6 +1014,11 @@ export async function startOverworld(PIXI, app, opts) {
     setFlood,
     floodDepthAt,
     setPaused,
+    setTownSpeed,
+    /** The loaded Easy Scene street (loadEasyScene result: shops, setShopOpen, counterFronts …) or null. */
+    townScene: () => s.townScene?.scene ?? null,
+    /** Container in the street world (behind stall / counter fronts) for game NPCs; null outside towns. */
+    townNpcLayer: () => s.townScene?.npcs ?? null,
     setNight,
     on: (ev, fn) => ((listeners[ev] ??= []).push(fn), game),
   };
