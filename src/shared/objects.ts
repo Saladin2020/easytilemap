@@ -5,6 +5,7 @@
  * Each object is a procedurally painted PNG (CC0) with a footprint (solid tiles) used for collision.
  */
 import { CITY_OBJECT_KINDS, CITY_PAINTERS } from "./cityObjects.js";
+import { TOWN_MORE_OBJECT_KINDS, TOWN_MORE_PAINTERS } from "./townMoreObjects.js";
 import { OVERWORLD_OBJECT_KINDS, OVERWORLD_PAINTERS } from "./overworldObjects.js";
 import { c, litMask, markLit, noise, Pix, type Rgba, type View } from "./pixel.js";
 import type { RgbaImage } from "./raster.js";
@@ -55,6 +56,8 @@ export const OBJECT_KINDS: readonly ObjectKind[] = [
   ...CITY_OBJECT_KINDS,
   // overworld town markers (world map scale, see overworldObjects.ts)
   ...OVERWORLD_OBJECT_KINDS,
+  // DSK-6 vehicles, civic buildings, offices, flea market (see townMoreObjects.ts); appended to keep old indexes
+  ...TOWN_MORE_OBJECT_KINDS,
 ];
 
 export const OBJECT_BY_KIND = new Map(OBJECT_KINDS.map((o) => [o.kind, o]));
@@ -524,6 +527,7 @@ const PAINTERS: Record<string, (v: View) => void> = {
   bridge_h: (v) => drawBridge(v, true),
   bridge_v: (v) => drawBridge(v, false),
   ...CITY_PAINTERS,
+  ...TOWN_MORE_PAINTERS,
   ...OVERWORLD_PAINTERS,
 };
 
