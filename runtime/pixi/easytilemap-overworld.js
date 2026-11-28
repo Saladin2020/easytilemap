@@ -28,6 +28,69 @@ const TRAIN_SPEED = 120;
 const CAR_GAP = 15;
 const TOWN_SPEED = 72;
 const NIGHT_TINT = 0x9ea8e6;
+
+/** Walkable x range from a Pixi Easy Scene: exported `walk`, or solid tiles plus collision decks (piers). */
+export function townWalkRange(j) {
+  if (j.walk && Number.isFinite(j.walk.minX) && Number.isFinite(j.walk.maxX)) return { minX: j.walk.minX, maxX: j.walk.maxX };
+  const ts = j.tileSize, w = j.tilemap.width, codes = j.tilemap.codes, widthPx = j.size?.width ?? w * ts;
+  const walkable = Array.from({ length: w }, (_, col) => {
+    for (let y = 0; y < codes.length; y++) {
+      const c = codes[y][col];
+      if (c === "#" || c === "/" || c === "\\") return true;
+    }
+    return false;
+  });
+  for (const r of j.collision?.solid ?? []) {
+    const c0 = Math.max(0, Math.floor(r.x / ts));
+    const c1 = Math.min(w, Math.ceil((r.x + r.w) / ts));
+    for (let c = c0; c < c1; c++) walkable[c] = true;
+  }
+  const first = walkable.indexOf(true);
+  if (first < 0) return { minX: 0, maxX: widthPx };
+  let last = first;
+  for (let c = first; c < w && walkable[c]; c++) last = c;
+  return { minX: first * ts, maxX: (last + 1) * ts };
+}
+
+/** Road only (no pier / open water). Exported `road`, or solid tiles minus thin deck spans. */
+export function townRoadRange(j) {
+  if (j.road && Number.isFinite(j.road.minX) && Number.isFinite(j.road.maxX)) return { minX: j.road.minX, maxX: j.road.maxX };
+  const ts = j.tileSize, w = j.tilemap.width, codes = j.tilemap.codes, widthPx = j.size?.width ?? w * ts;
+  const decks = (j.collision?.solid ?? []).filter((r) => r.h <= 8);
+  const road = Array.from({ length: w }, (_, col) => {
+    let solid = false;
+    for (let y = 0; y < codes.length; y++) {
+      const c = codes[y][col];
+      if (c === "#" || c === "/" || c === "\\") { solid = true; break; }
+    }
+    const x0 = col * ts, x1 = x0 + ts;
+    return solid && !decks.some((r) => x0 < r.x + r.w && x1 > r.x);
+  });
+  const first = road.indexOf(true);
+  if (first < 0) return { minX: 0, maxX: widthPx };
+  let last = first;
+  for (let c = first; c < w && road[c]; c++) last = c;
+  return { minX: first * ts, maxX: (last + 1) * ts };
+}
+
+/** Feet Y at px: solid / slope tile, else the top of a collision deck (pier), else the map bottom. */
+export function townSurfaceY(j, px) {
+  const ts = j.tileSize, codes = j.tilemap.codes;
+  const col = Math.max(0, Math.min(j.tilemap.width - 1, Math.floor(px / ts)));
+  for (let y = 0; y < codes.length; y++) {
+    const c = codes[y][col];
+    if (c === "#") return y * ts;
+    if (c === "/" || c === "\\") return y * ts + ts / 2;
+  }
+  let best = null;
+  for (const r of j.collision?.solid ?? []) {
+    if (px >= r.x && px < r.x + r.w) {
+      if (best == null || r.y < best) best = r.y;
+    }
+  }
+  return best != null ? best : codes.length * ts;
+}
+
 const FLY_SPEED = 170;
 const ROLL_TIME = 1.6;
 /** Highest lowland digit a flood level covers (same as floodReach in src/shared/overworld.ts). */
@@ -369,23 +432,18 @@ export async function startOverworld(PIXI, app, opts) {
     const root = new PIXI.Container();
     let width = 960;
     let surface = () => vh - 3 * ts;
+    let walkRange = { minX: 0, maxX: 960 };
+    let roadRange = { minX: 0, maxX: 960 };
     let exitL = true;
     let exitR = true;
     if (scene) {
       root.addChild(scene.root);
       const j = scene.json;
       width = j.size.width;
-      const codes = j.tilemap.codes;
       const tsz = j.tileSize;
-      surface = (px) => {
-        const col = Math.max(0, Math.min(j.tilemap.width - 1, Math.floor(px / tsz)));
-        for (let y = 0; y < codes.length; y++) {
-          const c = codes[y][col];
-          if (c === "#") return y * tsz;
-          if (c === "/" || c === "\\") return y * tsz + tsz / 2;
-        }
-        return codes.length * tsz;
-      };
+      surface = (px) => townSurfaceY(j, px);
+      walkRange = townWalkRange(j);
+      roadRange = townRoadRange(j);
       if (Array.isArray(j.exits) && j.exits.length) {
         exitL = j.exits.some((e) => e.side === "left");
         exitR = j.exits.some((e) => e.side === "right");
@@ -397,7 +455,7 @@ export async function startOverworld(PIXI, app, opts) {
     const npcs = new PIXI.Container();
     npcs.label = "town-npcs";
     const info = data.townScenes?.[t.scene] ?? null;
-    const town = { root, x: 24, dir: "right", width, scene, holder, npcs, sprite: null, exitL, exitR, exiting: false };
+    const town = { root, x: 24, dir: "right", width, scene, holder, npcs, sprite: null, exitL, exitR, exiting: false, walk: walkRange, road: roadRange };
     if (scene) placeHolders(scene, town);
     else root.addChild(npcs, holder);
     town.sceneJson = scene && info ? (s.night && info.night ? info.night : info.json) : null;
@@ -432,8 +490,13 @@ export async function startOverworld(PIXI, app, opts) {
         town.x += d * TOWN_SPEED * townSpeed * dt;
         town.anim("walk");
       } else town.anim("idle");
-      if (!exitL) town.x = Math.max(8, town.x);
-      if (!exitR) town.x = Math.min(width - 8, town.x);
+      // clamp to the street + pier, never into open water (even if the scene is wider)
+      const wr = town.walk ?? { minX: 0, maxX: width };
+      let lo = wr.minX + 8, hi = wr.maxX - 8;
+      if (hi < lo) { lo = wr.minX; hi = wr.maxX; }
+      if (exitL) lo = Math.min(lo, 0);
+      if (exitR && wr.maxX >= width - 8) hi = Math.max(hi, width);
+      town.x = Math.max(lo, Math.min(hi, town.x));
       town.sprite.position.set(Math.round(town.x), surface(town.x));
       const camX = Math.max(0, Math.min(width - vw, town.x - vw / 2));
       town.camX = camX;
@@ -441,7 +504,7 @@ export async function startOverworld(PIXI, app, opts) {
         town.scene.setCamera(camX);
         town.scene.update(dt);
       } else root.x = -camX;
-      if ((exitL && town.x < 4) || (exitR && town.x > width - 4)) leaveTown();
+      if ((exitL && wr.minX <= 0 && town.x < 4) || (exitR && wr.maxX >= width - 8 && town.x > width - 4)) leaveTown();
     };
     return town;
   }
@@ -984,6 +1047,9 @@ export async function startOverworld(PIXI, app, opts) {
       night: s.night,
       townX: s.townScene ? s.townScene.x : null,
       townWidth: s.townScene ? s.townScene.width : null,
+      townWalk: s.townScene ? s.townScene.walk : null,
+      townRoad: s.townScene ? s.townScene.road : null,
+      townY: s.townScene?.sprite ? s.townScene.sprite.y : null,
       townLoaded: Boolean(s.townScene?.scene),
       townNight: s.townScene?.scene?.json?.lighting === "night",
       trainCars: train.cars.length,
@@ -1004,6 +1070,7 @@ export async function startOverworld(PIXI, app, opts) {
     enterTown,
     leaveTown,
     setTownDir: (d) => (s.townDir = d),
+    setTownX: (x) => { if (s.townScene) s.townScene.x = x; },
     openMenu,
     rideTrain,
     trainsFrom,
